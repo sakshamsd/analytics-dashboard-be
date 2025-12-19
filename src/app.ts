@@ -4,6 +4,7 @@ import { errorHandler } from "./middlewares/error-handler.js";
 import contactRoutes from "./routes/contact.routes.js";
 import dealRoutes from "./routes/deal.routes.js";
 import activityRoutes from "./routes/activity.routes.js";
+import { contextMiddleware } from "./middlewares/context.js";
 
 const app = express();
 
@@ -12,6 +13,7 @@ app.use(express.json());
 app.get("/health", (_req, res) => {
 	res.json({ status: "ok" });
 });
+app.use(contextMiddleware);
 
 app.use("/api/v1/companies", companyRoutes);
 app.use("/api/v1/contacts", contactRoutes);

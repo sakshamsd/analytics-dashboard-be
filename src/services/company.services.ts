@@ -1,58 +1,123 @@
 import { AppDataSource } from "../database/data-source.js";
 import { Company } from "../entities/Companies.js";
+import { AppError } from "../errors/AppError.js";
+import { IsNull } from "typeorm";
+import type { CreateCompanyInput, UpdateCompanyInput } from "../validation/company.schema.js";
 
 const companyRepo = AppDataSource.getRepository(Company);
 
-// Get all companies (later you can add pagination)
-export async function listCompanies() {
+/**
+ * List companies (workspace scoped)
+ */
+export async function listCompanies(workspaceId: string) {
 	return companyRepo.find({
+		where: { workspaceId, deletedAt: IsNull() },
 		order: { createdAt: "DESC" },
 	});
 }
 
-// Get a single company by id
-export async function getCompanyById(id: string) {
-	return companyRepo.findOne({ where: { id } });
+/**
+ * Get company by id
+ */
+export async function getCompanyById(workspaceId: string, id: string) {
+	const company = await companyRepo.findOne({
+		where: { id, workspaceId, deletedAt: IsNull() },
+	});
+
+	if (!company) throw new AppError("Company not found", 404);
+	return company;
 }
 
-// Create a new company
-export async function createCompany(payload: Partial<Company>) {
-	// Minimal validation for now – we can improve this later
-	if (!payload.name) {
-		throw new Error("Name is required");
+/**
+ * Create company
+ */
+export async function createCompany(
+	workspaceId: string,
+	userId: string,
+	input: CreateCompanyInput
+) {
+	const companyData: Partial<Company> = {
+		workspaceId,
+		ownerId: userId,
+		createdBy: userId,
+		updatedBy: userId,
+		name: input.name,
+	};
+
+	if (input.website !== undefined) {
+		companyData.website = input.website;
 	}
 
-	const company = companyRepo.create({
-		name: payload.name,
-		...(payload.website !== undefined && { website: payload.website }),
-		...(payload.industry !== undefined && { industry: payload.industry }),
-		...(payload.size !== undefined && { size: payload.size }),
-		status: payload.status ?? "prospect",
-	});
+	if (input.industry !== undefined) {
+		companyData.industry = input.industry;
+	}
+
+	if (input.size !== undefined) {
+		companyData.size = input.size;
+	}
+
+	if (input.status !== undefined) {
+		companyData.status = input.status;
+	}
+
+	const company = companyRepo.create(companyData);
 
 	return companyRepo.save(company);
 }
 
-// Update an existing company
-export async function updateCompany(id: string, payload: Partial<Company>) {
-	const existing = await companyRepo.findOne({ where: { id } });
-	if (!existing) return null;
+/**
+ * Update company
+ */
+export async function updateCompany(
+	workspaceId: string,
+	userId: string,
+	id: string,
+	input: UpdateCompanyInput
+) {
+	const company = await companyRepo.findOne({
+		where: { id, workspaceId, deletedAt: IsNull() },
+	});
 
-	// Merge fields
-	if (payload.name !== undefined) existing.name = payload.name;
-	if (payload.website !== undefined) existing.website = payload.website;
-	if (payload.industry !== undefined) existing.industry = payload.industry;
-	if (payload.size !== undefined) existing.size = payload.size;
-	if (payload.status !== undefined) existing.status = payload.status;
+	if (!company) throw new AppError("Company not found", 404);
 
-	return companyRepo.save(existing);
+	Object.assign(company, input);
+	company.updatedBy = userId;
+
+	return companyRepo.save(company);
 }
 
-// Delete a company
-export async function deleteCompany(id: string) {
-	const existing = await companyRepo.findOne({ where: { id } });
-	if (!existing) return false;
+/**
+ * Soft delete company
+ */
+export async function deleteCompany(workspaceId: string, userId: string, id: string) {
+	const company = await companyRepo.findOne({
+		where: { id, workspaceId, deletedAt: IsNull() },
+	});
 
-	await companyRepo.remove(existing);
-	return true;
+	if (!company) throw new AppError("Company not found", 404);
+
+	company.deletedAt = new Date();
+	company.deletedBy = userId;
+	company.updatedBy = userId;
+
+	await companyRepo.save(company);
+}
+
+/**
+ * Restore company
+ */
+export async function restoreCompany(workspaceId: string, userId: string, id: string) {
+	const company = await companyRepo.findOne({
+		where: { id, workspaceId },
+	});
+
+	if (!company || !company.deletedAt) {
+		throw new AppError("Company not found or not deleted", 404);
+	}
+
+	company.deletedAt = null;
+	company.deletedBy = null;
+	company.updatedBy = userId;
+
+	return companyRepo.save(company);
 }

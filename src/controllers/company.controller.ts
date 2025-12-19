@@ -6,10 +6,12 @@ import {
 	updateCompany,
 	deleteCompany,
 } from "../services/company.services.js";
+import { createCompanySchema, updateCompanySchema } from "../validation/company.schema.js";
 
-export async function listCompaniesHandler(_req: Request, res: Response, next: NextFunction) {
+export async function listCompaniesHandler(req: Request, res: Response, next: NextFunction) {
 	try {
-		const companies = await listCompanies();
+		const { workspaceId } = req.ctx!;
+		const companies = await listCompanies(workspaceId);
 		res.json(companies);
 	} catch (err) {
 		next(err);
@@ -18,14 +20,12 @@ export async function listCompaniesHandler(_req: Request, res: Response, next: N
 
 export async function getCompanyHandler(req: Request, res: Response, next: NextFunction) {
 	try {
+		const { workspaceId } = req.ctx!;
 		const { id } = req.params;
 		if (!id) {
 			return res.status(400).json({ message: "Company ID is required" });
 		}
-		const company = await getCompanyById(id);
-		if (!company) {
-			return res.status(404).json({ message: "Company not found" });
-		}
+		const company = await getCompanyById(workspaceId, id);
 		res.json(company);
 	} catch (err) {
 		next(err);
@@ -34,27 +34,24 @@ export async function getCompanyHandler(req: Request, res: Response, next: NextF
 
 export async function createCompanyHandler(req: Request, res: Response, next: NextFunction) {
 	try {
-		const created = await createCompany(req.body);
+		const { workspaceId, userId } = req.ctx!;
+		const parsed = createCompanySchema.parse(req.body);
+		const created = await createCompany(workspaceId, userId, parsed);
 		res.status(201).json(created);
-	} catch (err: any) {
-		// Quick/simple error handling – later we can refine
-		if (err.message === "Name is required") {
-			return res.status(400).json({ message: err.message });
-		}
+	} catch (err) {
 		next(err);
 	}
 }
 
 export async function updateCompanyHandler(req: Request, res: Response, next: NextFunction) {
 	try {
+		const { workspaceId, userId } = req.ctx!;
 		const { id } = req.params;
 		if (!id) {
 			return res.status(400).json({ message: "Company ID is required" });
 		}
-		const updated = await updateCompany(id, req.body);
-		if (!updated) {
-			return res.status(404).json({ message: "Company not found" });
-		}
+		const parsed = updateCompanySchema.parse(req.body);
+		const updated = await updateCompany(workspaceId, userId, id, parsed);
 		res.json(updated);
 	} catch (err) {
 		next(err);
@@ -63,14 +60,12 @@ export async function updateCompanyHandler(req: Request, res: Response, next: Ne
 
 export async function deleteCompanyHandler(req: Request, res: Response, next: NextFunction) {
 	try {
+		const { workspaceId, userId } = req.ctx!;
 		const { id } = req.params;
 		if (!id) {
 			return res.status(400).json({ message: "Company ID is required" });
 		}
-		const ok = await deleteCompany(id);
-		if (!ok) {
-			return res.status(404).json({ message: "Company not found" });
-		}
+		await deleteCompany(workspaceId, userId, id);
 		res.status(204).send();
 	} catch (err) {
 		next(err);
