@@ -3,7 +3,9 @@ import {
 	PrimaryGeneratedColumn,
 	Column,
 	CreateDateColumn,
-	UpdateDateColumn,OneToMany
+	UpdateDateColumn,
+	OneToMany,
+	Index,
 } from "typeorm";
 
 import { Contact } from "./Contact.js";
@@ -36,4 +38,24 @@ export class Company {
 
 	@UpdateDateColumn({ name: "updated_at", type: "timestamptz" })
 	updatedAt!: Date;
+
+	@Index()
+	@Column({ type: "uuid" })
+	workspaceId!: string;
+
+	@Index()
+	@Column({ type: "uuid", nullable: true })
+	ownerId!: string | null;
+
+	@Column({ type: "uuid", nullable: true })
+	createdBy!: string | null;
+
+	@Column({ type: "uuid", nullable: true })
+	updatedBy!: string | null;
+
+	@Column({ type: "timestamp", nullable: true })
+	deletedAt!: Date | null;
+
+	@Column({ type: "uuid", nullable: true })
+	deletedBy!: string | null;
 }

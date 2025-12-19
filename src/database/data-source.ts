@@ -13,5 +13,5 @@ export const AppDataSource = new DataSource({
 	ssl: isProd ? { rejectUnauthorized: false } : false,
 	entities: [Company, Contact, Deals, Activities],
 	migrations: ["dist/migrations/*.js"],
-	synchronize: true,
+	synchronize: false,
 });

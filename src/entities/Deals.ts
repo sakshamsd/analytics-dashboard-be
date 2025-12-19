@@ -25,6 +25,10 @@ export class Deals {
 	id!: string;
 
 	@Index()
+	@Column({ type: "uuid" })
+	workspaceId!: string;
+
+	@Index()
 	@Column({ type: "varchar", length: 200 })
 	title!: string;
 
@@ -73,4 +77,17 @@ export class Deals {
 
 	@UpdateDateColumn()
 	updatedAt!: Date;
+
+	@Index()
+	@Column({ type: "uuid", nullable: true })
+	createdBy!: string | null;
+
+	@Column({ type: "uuid", nullable: true })
+	updatedBy!: string | null;
+
+	@Column({ type: "timestamp", nullable: true })
+	deletedAt!: Date | null;
+
+	@Column({ type: "uuid", nullable: true })
+	deletedBy!: string | null;
 }

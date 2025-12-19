@@ -31,6 +31,10 @@ export class Activities {
 	id!: string;
 
 	@Index()
+	@Column({ type: "uuid" })
+	workspaceId!: string;
+
+	@Index()
 	@Column({ type: "enum", enum: ActivityType })
 	type!: ActivityType;
 
@@ -81,4 +85,16 @@ export class Activities {
 
 	@UpdateDateColumn()
 	updatedAt!: Date;
+
+	@Column({ type: "uuid", nullable: true })
+	createdBy!: string | null;
+
+	@Column({ type: "uuid", nullable: true })
+	updatedBy!: string | null;
+
+	@Column({ type: "timestamp", nullable: true })
+	deletedAt!: Date | null;
+
+	@Column({ type: "uuid", nullable: true })
+	deletedBy!: string | null;
 }
