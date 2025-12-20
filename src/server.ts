@@ -16,8 +16,8 @@ async function start() {
 		await AppDataSource.initialize();
 		console.log("✅ Supabase Postgres connected");
 
-		// await connectMongo();
-		// console.log("✅ MongoDB connected");
+		await connectMongo();
+		console.log("✅ MongoDB connected");
 
 		app.listen(PORT, () => {
 			console.log(`🚀 Server running on port ${PORT}`);
