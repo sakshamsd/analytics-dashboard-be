@@ -52,7 +52,6 @@ export async function createDeal(workspaceId: string, userId: string, input: Cre
 
 	const deal = dealRepo.create({
 		workspaceId,
-		ownerId: userId,
 		createdBy: userId,
 		updatedBy: userId,
 		...input,

@@ -92,6 +92,10 @@ export async function createActivity(
 		activityData.dueAt = new Date(input.dueAt);
 	}
 
+	if (input.priority !== undefined) {
+		activityData.priority = input.priority;
+	}
+
 	const activity = activityRepo.create(activityData);
 
 	return activityRepo.save(activity);

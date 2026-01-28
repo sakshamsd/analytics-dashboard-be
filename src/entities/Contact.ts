@@ -36,6 +36,31 @@ export class Contact {
 	@Column({ type: "varchar", nullable: true })
 	phone?: string | null;
 
+	@Column({ type: "varchar", nullable: true })
+	mobile?: string | null;
+
+	@Column({ type: "varchar", nullable: true })
+	jobTitle?: string | null;
+
+	@Column({ type: "varchar", nullable: true })
+	leadSource?: string | null;
+
+	// Address fields
+	@Column({ type: "varchar", nullable: true })
+	street?: string | null;
+
+	@Column({ type: "varchar", nullable: true })
+	city?: string | null;
+
+	@Column({ type: "varchar", nullable: true })
+	state?: string | null;
+
+	@Column({ type: "varchar", nullable: true })
+	postalCode?: string | null;
+
+	@Column({ type: "varchar", nullable: true })
+	country?: string | null;
+
 	@Column({ type: "boolean", default: false })
 	isPrimary!: boolean;
 

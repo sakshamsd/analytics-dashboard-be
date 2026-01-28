@@ -75,7 +75,17 @@ export async function createContact(
 		lastName: input.lastName,
 		email: input.email ?? null,
 		phone: input.phone ?? null,
+		mobile: input.mobile ?? null,
+		jobTitle: input.jobTitle ?? null,
+		leadSource: input.leadSource ?? null,
 		isPrimary: input.isPrimary ?? false,
+
+		// Address fields
+		street: input.street ?? null,
+		city: input.city ?? null,
+		state: input.state ?? null,
+		postalCode: input.postalCode ?? null,
+		country: input.country ?? null,
 	});
 
 	return contactRepo.save(contact);
@@ -126,7 +136,17 @@ export async function updateContact(
 	if (input.lastName !== undefined) contact.lastName = input.lastName;
 	if (input.email !== undefined) contact.email = input.email ?? null;
 	if (input.phone !== undefined) contact.phone = input.phone ?? null;
+	if (input.mobile !== undefined) contact.mobile = input.mobile ?? null;
+	if (input.jobTitle !== undefined) contact.jobTitle = input.jobTitle ?? null;
+	if (input.leadSource !== undefined) contact.leadSource = input.leadSource ?? null;
 	if (input.isPrimary !== undefined) contact.isPrimary = input.isPrimary;
+
+	// Address fields
+	if (input.street !== undefined) contact.street = input.street ?? null;
+	if (input.city !== undefined) contact.city = input.city ?? null;
+	if (input.state !== undefined) contact.state = input.state ?? null;
+	if (input.postalCode !== undefined) contact.postalCode = input.postalCode ?? null;
+	if (input.country !== undefined) contact.country = input.country ?? null;
 
 	contact.updatedBy = userId;
 

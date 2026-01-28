@@ -52,6 +52,9 @@ export class Activities {
 	@Column({ type: "timestamptz", nullable: true })
 	dueAt!: Date | null;
 
+	@Column({ type: "varchar", nullable: true })
+	priority?: string | null;
+
 	@Index()
 	@Column({ type: "uuid", nullable: true })
 	ownerId!: string | null;

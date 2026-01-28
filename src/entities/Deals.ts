@@ -49,6 +49,21 @@ export class Deals {
 	@Column({ type: "date", nullable: true })
 	expectedCloseDate!: string | null;
 
+	@Column({ type: "text", nullable: true })
+	description?: string | null;
+
+	@Column({ type: "varchar", nullable: true })
+	priority?: string | null;
+
+	@Column({ type: "int", nullable: true })
+	probability?: number | null;
+
+	@Column({ type: "varchar", nullable: true })
+	source?: string | null;
+
+	@Column({ type: "jsonb", nullable: true })
+	tags?: string[] | null;
+
 	@Index()
 	@Column({ type: "uuid", nullable: true })
 	ownerId!: string | null;

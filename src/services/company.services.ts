@@ -60,6 +60,47 @@ export async function createCompany(
 		companyData.status = input.status;
 	}
 
+	if (input.email !== undefined) {
+		companyData.email = input.email;
+	}
+
+	if (input.phone !== undefined) {
+		companyData.phone = input.phone;
+	}
+
+	if (input.numberOfEmployees !== undefined) {
+		companyData.numberOfEmployees = input.numberOfEmployees;
+	}
+
+	if (input.annualRevenue !== undefined) {
+		companyData.annualRevenue = input.annualRevenue;
+	}
+
+	if (input.description !== undefined) {
+		companyData.description = input.description;
+	}
+
+	// Address fields
+	if (input.street !== undefined) {
+		companyData.street = input.street;
+	}
+
+	if (input.city !== undefined) {
+		companyData.city = input.city;
+	}
+
+	if (input.state !== undefined) {
+		companyData.state = input.state;
+	}
+
+	if (input.postalCode !== undefined) {
+		companyData.postalCode = input.postalCode;
+	}
+
+	if (input.country !== undefined) {
+		companyData.country = input.country;
+	}
+
 	const company = companyRepo.create(companyData);
 
 	return companyRepo.save(company);
