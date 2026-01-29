@@ -2,6 +2,21 @@
 
 A full-featured backend API for an analytics dashboard application, built with Node.js, Express, TypeScript, PostgreSQL, and MongoDB.
 
+## 📚 Complete Documentation
+
+**New to this project?** Start here:
+
+| Document | Purpose |
+|----------|---------|
+| [PROJECT_SUMMARY.md](./PROJECT_SUMMARY.md) | **Start here!** Complete project overview and quick links |
+| [API_DOCUMENTATION.md](./API_DOCUMENTATION.md) | Complete API reference for frontend developers |
+| [FRONTEND_INTEGRATION.md](./FRONTEND_INTEGRATION.md) | TypeScript types, hooks, and integration examples |
+| [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) | Deploy to Render, Railway, Fly.io (step-by-step) |
+| [DEPLOYMENT_READY_CHECKLIST.md](./DEPLOYMENT_READY_CHECKLIST.md) | Missing features and production readiness |
+| [SEED_README.md](./SEED_README.md) | Seed data documentation |
+
+**Current State:** ✅ 76% production-ready | Ready for demo/resume deployment
+
 ## Features
 
 - RESTful API with Express.js
