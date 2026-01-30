@@ -1,26 +1,25 @@
 import { z } from "zod";
+import { Industry, CompanySize } from "../entities/Companies.js";
+
+export const industryEnum = z.nativeEnum(Industry);
+export const companySizeEnum = z.nativeEnum(CompanySize);
 
 export const createCompanySchema = z.object({
 	name: z.string().min(1, "Company name is required"),
-	website: z.string().optional(),
-	industry: z.string().optional(),
-	size: z.string().optional(),
+	email: z.string().email("Invalid email format"),
+	phone: z.string().min(1, "Phone is required"),
+	website: z.string().min(1, "Website is required"),
+	industry: industryEnum,
+	companySize: companySizeEnum.optional(),
+	country: z.string().min(1, "Country is required"),
+	state: z.string().min(1, "State is required"),
+	city: z.string().min(1, "City is required"),
+	address: z.string().min(1, "Address is required"),
+	postcode: z.string().min(1, "Postcode is required"),
+	leadSource: z.string().min(1, "Lead source is required"),
 	status: z.string().optional(),
 	ownerId: z.string().uuid().optional(),
-
-	// New fields
-	email: z.string().email("Invalid email format").optional(),
-	phone: z.string().optional(),
-	numberOfEmployees: z.number().int().min(0, "Number of employees must be non-negative").optional(),
-	annualRevenue: z.number().int().min(0, "Annual revenue must be non-negative").optional(),
 	description: z.string().optional(),
-
-	// Address fields
-	street: z.string().optional(),
-	city: z.string().optional(),
-	state: z.string().optional(),
-	postalCode: z.string().optional(),
-	country: z.string().optional(),
 });
 
 export const updateCompanySchema = createCompanySchema.partial();

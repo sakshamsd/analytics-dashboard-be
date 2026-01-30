@@ -1,19 +1,85 @@
 import { AppDataSource } from "../database/data-source.js";
 import { Company } from "../entities/Companies.js";
 import { AppError } from "../errors/AppError.js";
-import { IsNull } from "typeorm";
+import { IsNull, ILike } from "typeorm";
 import type { CreateCompanyInput, UpdateCompanyInput } from "../validation/company.schema.js";
 
 const companyRepo = AppDataSource.getRepository(Company);
 
+export interface ListCompaniesParams {
+	page?: number | undefined;
+	limit?: number | undefined;
+	search?: string | undefined;
+}
+
+export interface PaginatedResult<T> {
+	data: T[];
+	pagination: {
+		page: number;
+		limit: number;
+		total: number;
+		totalPages: number;
+	};
+}
+
 /**
- * List companies (workspace scoped)
+ * List companies with pagination and search (workspace scoped)
  */
-export async function listCompanies(workspaceId: string) {
-	return companyRepo.find({
-		where: { workspaceId, deletedAt: IsNull() },
+export async function listCompanies(
+	workspaceId: string,
+	params: ListCompaniesParams = {}
+): Promise<PaginatedResult<Company>> {
+	const page = Math.max(1, params.page || 1);
+	const limit = Math.min(100, Math.max(1, params.limit || 10));
+	const skip = (page - 1) * limit;
+
+	const whereConditions: any = {
+		workspaceId,
+		deletedAt: IsNull(),
+	};
+
+	if (params.search) {
+		const searchTerm = `%${params.search}%`;
+		const [data, total] = await companyRepo
+			.createQueryBuilder("company")
+			.where("company.workspaceId = :workspaceId", { workspaceId })
+			.andWhere("company.deletedAt IS NULL")
+			.andWhere(
+				"(company.name ILIKE :search OR company.email ILIKE :search OR company.phone ILIKE :search)",
+				{ search: searchTerm }
+			)
+			.orderBy("company.createdAt", "DESC")
+			.skip(skip)
+			.take(limit)
+			.getManyAndCount();
+
+		return {
+			data,
+			pagination: {
+				page,
+				limit,
+				total,
+				totalPages: Math.ceil(total / limit),
+			},
+		};
+	}
+
+	const [data, total] = await companyRepo.findAndCount({
+		where: whereConditions,
 		order: { createdAt: "DESC" },
+		skip,
+		take: limit,
 	});
+
+	return {
+		data,
+		pagination: {
+			page,
+			limit,
+			total,
+			totalPages: Math.ceil(total / limit),
+		},
+	};
 }
 
 /**
@@ -42,63 +108,28 @@ export async function createCompany(
 		createdBy: userId,
 		updatedBy: userId,
 		name: input.name,
+		email: input.email,
+		phone: input.phone,
+		website: input.website,
+		industry: input.industry,
+		country: input.country,
+		state: input.state,
+		city: input.city,
+		address: input.address,
+		postcode: input.postcode,
+		leadSource: input.leadSource,
 	};
 
-	if (input.website !== undefined) {
-		companyData.website = input.website;
-	}
-
-	if (input.industry !== undefined) {
-		companyData.industry = input.industry;
-	}
-
-	if (input.size !== undefined) {
-		companyData.size = input.size;
+	if (input.companySize !== undefined) {
+		companyData.companySize = input.companySize;
 	}
 
 	if (input.status !== undefined) {
 		companyData.status = input.status;
 	}
 
-	if (input.email !== undefined) {
-		companyData.email = input.email;
-	}
-
-	if (input.phone !== undefined) {
-		companyData.phone = input.phone;
-	}
-
-	if (input.numberOfEmployees !== undefined) {
-		companyData.numberOfEmployees = input.numberOfEmployees;
-	}
-
-	if (input.annualRevenue !== undefined) {
-		companyData.annualRevenue = input.annualRevenue;
-	}
-
 	if (input.description !== undefined) {
 		companyData.description = input.description;
-	}
-
-	// Address fields
-	if (input.street !== undefined) {
-		companyData.street = input.street;
-	}
-
-	if (input.city !== undefined) {
-		companyData.city = input.city;
-	}
-
-	if (input.state !== undefined) {
-		companyData.state = input.state;
-	}
-
-	if (input.postalCode !== undefined) {
-		companyData.postalCode = input.postalCode;
-	}
-
-	if (input.country !== undefined) {
-		companyData.country = input.country;
 	}
 
 	const company = companyRepo.create(companyData);

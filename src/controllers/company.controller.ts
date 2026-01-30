@@ -11,8 +11,12 @@ import { createCompanySchema, updateCompanySchema } from "../validation/company.
 export async function listCompaniesHandler(req: Request, res: Response, next: NextFunction) {
 	try {
 		const { workspaceId } = req.ctx!;
-		const companies = await listCompanies(workspaceId);
-		res.json(companies);
+		const page = req.query.page ? parseInt(req.query.page as string, 10) : undefined;
+		const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+		const search = req.query.search as string | undefined;
+
+		const result = await listCompanies(workspaceId, { page, limit, search });
+		res.json(result);
 	} catch (err) {
 		next(err);
 	}

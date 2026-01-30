@@ -10,6 +10,25 @@ import {
 
 import { Contact } from "./Contact.js";
 
+export enum Industry {
+	TECHNOLOGY = "technology",
+	FINANCE = "finance",
+	HEALTHCARE = "healthcare",
+	RETAIL = "retail",
+	MANUFACTURING = "manufacturing",
+	EDUCATION = "education",
+	REAL_ESTATE = "real-estate",
+}
+
+export enum CompanySize {
+	SIZE_1_10 = "1-10",
+	SIZE_11_50 = "11-50",
+	SIZE_51_200 = "51-200",
+	SIZE_201_500 = "201-500",
+	SIZE_501_1000 = "501-1000",
+	SIZE_1000_PLUS = "1000+",
+}
+
 @Entity({ name: "companies" })
 export class Company {
 	@PrimaryGeneratedColumn("uuid")
@@ -18,55 +37,44 @@ export class Company {
 	@Column({ type: "varchar" })
 	name!: string;
 
-	@Column({ type: "varchar", nullable: true })
-	website?: string;
+	@Column({ type: "varchar", length: 320 })
+	email!: string;
 
-	@Column({ type: "varchar", nullable: true })
-	industry?: string;
+	@Column({ type: "varchar" })
+	phone!: string;
+
+	@Column({ type: "varchar" })
+	website!: string;
+
+	@Column({ type: "enum", enum: Industry })
+	industry!: Industry;
+
+	@Column({ type: "enum", enum: CompanySize, nullable: true })
+	companySize?: CompanySize | null;
 
 	@OneToMany(() => Contact, (contact) => contact.company)
 	contacts!: Contact[];
 
-	@Column({ type: "varchar", nullable: true })
-	size?: string;
+	@Column({ type: "varchar" })
+	country!: string;
 
-	@Column({ type: "varchar", length: 320, nullable: true })
-	email?: string | null;
+	@Column({ type: "varchar" })
+	state!: string;
 
-	@Column({ type: "varchar", nullable: true })
-	phone?: string | null;
+	@Column({ type: "varchar" })
+	city!: string;
 
-	@Column({ type: "int", nullable: true })
-	numberOfEmployees?: number | null;
+	@Column({ type: "varchar" })
+	address!: string;
 
-	@Column({
-		type: "bigint",
-		nullable: true,
-		transformer: {
-			to: (value: number | null) => value,
-			from: (value: string | null) => (value ? parseInt(value, 10) : null),
-		},
-	})
-	annualRevenue?: number | null;
+	@Column({ type: "varchar" })
+	postcode!: string;
+
+	@Column({ type: "varchar" })
+	leadSource!: string;
 
 	@Column({ type: "text", nullable: true })
 	description?: string | null;
-
-	// Address fields
-	@Column({ type: "varchar", nullable: true })
-	street?: string | null;
-
-	@Column({ type: "varchar", nullable: true })
-	city?: string | null;
-
-	@Column({ type: "varchar", nullable: true })
-	state?: string | null;
-
-	@Column({ type: "varchar", nullable: true })
-	postalCode?: string | null;
-
-	@Column({ type: "varchar", nullable: true })
-	country?: string | null;
 
 	@Column({ type: "varchar", default: "prospect" })
 	status!: string;
