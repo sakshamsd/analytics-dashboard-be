@@ -8,21 +8,35 @@ import {
 	JoinColumn,
 	Index,
 } from "typeorm";
-import { Company } from "./Companies.js";
+import { LeadSource } from "./Companies.js";
+
+export enum ContactStatus {
+	ACTIVE = "active",
+	INACTIVE = "inactive",
+	BOUNCED = "bounced",
+	UNSUBSCRIBED = "unsubscribed",
+}
+
+export enum PreferredContactMethod {
+	EMAIL = "email",
+	PHONE = "phone",
+	MOBILE = "mobile",
+}
 
 @Entity({ name: "contacts" })
 export class Contact {
 	@PrimaryGeneratedColumn("uuid")
 	id!: string;
 
-	@Column({ name: "company_id", type: "uuid", nullable: true })
-	companyId!: string | null;
+	@Index()
+	@Column({ name: "company_id", type: "uuid" })
+	companyId!: string;
 
-	@ManyToOne(() => Company, (company) => company.contacts, {
-		onDelete: "SET NULL",
+	@ManyToOne("Company", "contacts", {
+		onDelete: "CASCADE",
 	})
 	@JoinColumn({ name: "company_id" })
-	company!: Company | null;
+	company!: any;
 
 	@Column({ type: "varchar" })
 	firstName!: string;
@@ -30,8 +44,8 @@ export class Contact {
 	@Column({ type: "varchar" })
 	lastName!: string;
 
-	@Column({ type: "varchar", nullable: true })
-	email?: string | null;
+	@Column({ type: "varchar" })
+	email!: string;
 
 	@Column({ type: "varchar", nullable: true })
 	phone?: string | null;
@@ -42,27 +56,30 @@ export class Contact {
 	@Column({ type: "varchar", nullable: true })
 	jobTitle?: string | null;
 
-	@Column({ type: "varchar", nullable: true })
-	leadSource?: string | null;
+	@Column({ type: "varchar", length: 120, nullable: true })
+	department?: string | null;
 
-	// Address fields
-	@Column({ type: "varchar", nullable: true })
-	street?: string | null;
-
-	@Column({ type: "varchar", nullable: true })
-	city?: string | null;
-
-	@Column({ type: "varchar", nullable: true })
-	state?: string | null;
-
-	@Column({ type: "varchar", nullable: true })
-	postalCode?: string | null;
-
-	@Column({ type: "varchar", nullable: true })
-	country?: string | null;
+	@Column({ type: "varchar", length: 500, nullable: true, name: "linkedin_url" })
+	linkedinUrl?: string | null;
 
 	@Column({ type: "boolean", default: false })
 	isPrimary!: boolean;
+
+	@Index()
+	@Column({ type: "enum", enum: ContactStatus, default: ContactStatus.ACTIVE })
+	status!: ContactStatus;
+
+	@Column({ type: "enum", enum: LeadSource, nullable: true, name: "lead_source" })
+	leadSource?: LeadSource | null;
+
+	@Column({ type: "enum", enum: PreferredContactMethod, nullable: true, name: "preferred_contact_method" })
+	preferredContactMethod?: PreferredContactMethod | null;
+
+	@Column({ type: "boolean", default: false, name: "do_not_contact" })
+	doNotContact!: boolean;
+
+	@Column({ type: "timestamptz", nullable: true, name: "last_activity_at" })
+	lastActivityAt?: Date | null;
 
 	@CreateDateColumn({ name: "created_at", type: "timestamptz" })
 	createdAt!: Date;
@@ -77,6 +94,10 @@ export class Contact {
 	@Index()
 	@Column({ type: "uuid", nullable: true })
 	ownerId!: string | null;
+
+	@Index()
+	@Column({ name: "assigned_to", type: "uuid" })
+	assignedTo!: string;
 
 	@Column({ type: "uuid", nullable: true })
 	createdBy!: string | null;

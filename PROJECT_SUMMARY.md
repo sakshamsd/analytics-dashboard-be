@@ -66,9 +66,9 @@ See [DEPLOYMENT_READY_CHECKLIST.md](./DEPLOYMENT_READY_CHECKLIST.md) for complet
 
 ### Critical (Do Before Deploy)
 1. ⚠️ Environment variable validation
-2. ⚠️ API documentation (✅ NOW COMPLETE!)
+2. ✅ API documentation (COMPLETE!)
 3. ⚠️ Request logging middleware
-4. ⚠️ Pagination and filtering
+4. ✅ Pagination and filtering (COMPLETE!)
 5. ⚠️ Database connection retry logic
 
 ### Important (Do After Deploy)
@@ -263,9 +263,16 @@ curl -X POST http://localhost:4000/api/v1/companies \
   -H "x-user-id: YOUR_USER_ID" \
   -d '{
     "name": "Acme Corporation",
-    "industry": "Technology",
+    "industry": "technology",
     "website": "https://acme.com",
-    "email": "contact@acme.com"
+    "email": "contact@acme.com",
+    "phone": "+1234567890",
+    "country": "USA",
+    "state": "California",
+    "city": "San Francisco",
+    "address": "123 Tech Lane",
+    "postcode": "94105",
+    "leadSource": "website"
   }'
 ```
 
@@ -274,9 +281,17 @@ curl -X POST http://localhost:4000/api/v1/companies \
 {
   "id": "123e4567-e89b-12d3-a456-426614174000",
   "name": "Acme Corporation",
-  "industry": "Technology",
+  "industry": "technology",
   "website": "https://acme.com",
   "email": "contact@acme.com",
+  "phone": "+1234567890",
+  "country": "USA",
+  "state": "California",
+  "city": "San Francisco",
+  "address": "123 Tech Lane",
+  "postcode": "94105",
+  "leadSource": "website",
+  "companySize": null,
   "workspaceId": "workspace-uuid",
   "ownerId": "user-uuid",
   "createdAt": "2024-01-29T10:30:00.000Z",
@@ -390,7 +405,7 @@ mongosh $MONGO_URI --eval "db.dashboard_configs.countDocuments()"
 5. ✅ Set up UptimeRobot (keep Render awake)
 
 ### Short Term (Week 2-4)
-1. ⚠️ Add pagination and filtering
+1. ✅ Add pagination and filtering (COMPLETE!)
 2. ⚠️ Implement structured logging
 3. ⚠️ Add restore endpoints for soft-deleted entities
 4. ⚠️ Set up error tracking (Sentry)

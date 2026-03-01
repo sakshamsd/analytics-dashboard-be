@@ -1,4 +1,4 @@
-# Analytics Dashboard API Documentation
+# CRM Backend — API Documentation
 
 **Base URL:** `http://localhost:4000` (development) or your deployed URL
 **API Version:** v1
@@ -7,1345 +7,854 @@
 ---
 
 ## Table of Contents
-1. [Authentication & Headers](#authentication--headers)
+
+1. [Required Headers](#required-headers)
 2. [Response Format](#response-format)
-3. [Error Handling](#error-handling)
-4. [Endpoints](#endpoints)
+3. [Pagination, Search & Filtering](#pagination-search--filtering)
+4. [Error Handling](#error-handling)
+5. [Endpoints](#endpoints)
    - [Health Check](#health-check)
-   - [Companies](#companies-api)
-   - [Contacts](#contacts-api)
-   - [Deals](#deals-api)
-   - [Activities](#activities-api)
-   - [Users](#users-api)
-   - [Dashboard Bootstrap](#dashboard-bootstrap-api)
-5. [Data Models](#data-models)
-6. [Enums](#enums)
-7. [Examples](#usage-examples)
+   - [Companies](#companies)
+   - [Contacts](#contacts)
+   - [Deals](#deals)
+   - [Activities](#activities)
+   - [Reports](#reports)
+   - [Users](#users)
+   - [Dashboard Bootstrap](#dashboard-bootstrap)
+6. [Data Models & Field Reference](#data-models--field-reference)
+7. [Enum Reference](#enum-reference)
 
 ---
 
-## Authentication & Headers
+## Required Headers
 
-### Required Headers for All CRM Endpoints
+All CRM endpoints (except `/health`) require these headers:
 
-**All endpoints under `/api/v1/*` (except `/health`) require these headers:**
+| Header | Type | Required | Description |
+|--------|------|----------|-------------|
+| `x-workspace-id` | UUID string | ✅ Yes | Tenant/workspace identifier |
+| `x-user-id` | UUID string | ✅ Yes | Currently acting user identifier |
+| `Content-Type` | string | ✅ Yes (on POST/PATCH) | `application/json` |
 
-```http
-x-workspace-id: <workspace-uuid>
-x-user-id: <user-uuid>
+```
+x-workspace-id: 550e8400-e29b-41d4-a716-446655440000
+x-user-id: 6ba7b810-9dad-11d1-80b4-00c04fd430c8
 Content-Type: application/json
 ```
-
-**Example:**
-```http
-x-workspace-id: 123e4567-e89b-12d3-a456-426614174000
-x-user-id: 987fcdeb-51a2-43f7-9abc-123456789def
-Content-Type: application/json
-```
-
-**Note:** Authorization/JWT is skipped for this demo. In production, use OAuth2/JWT tokens.
 
 ---
 
 ## Response Format
 
-### Success Response
-
+### Single Resource
 ```json
 {
-  "id": "123e4567-e89b-12d3-a456-426614174000",
-  "name": "Acme Corporation",
-  "status": "active",
+  "id": "uuid",
+  "name": "Acme Corp",
   "createdAt": "2024-01-15T10:30:00.000Z",
   "updatedAt": "2024-01-15T10:30:00.000Z"
 }
 ```
 
-**Arrays return list of objects:**
+### Paginated List
 ```json
-[
-  { "id": "...", "name": "..." },
-  { "id": "...", "name": "..." }
-]
+{
+  "data": [...],
+  "pagination": {
+    "page": 1,
+    "limit": 10,
+    "total": 100,
+    "totalPages": 10
+  }
+}
+```
+
+### Error
+```json
+{
+  "statusCode": 400,
+  "message": "Validation failed",
+  "errors": [{ "field": "email", "message": "Invalid email format" }]
+}
+```
+
+---
+
+## Pagination, Search & Filtering
+
+All list endpoints support the following query parameters:
+
+### Common Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `page` | integer | 1 | Page number (1-indexed) |
+| `limit` | integer | 10 | Records per page (max: 100) |
+| `search` | string | — | Text search across key fields |
+| `sortBy` | string | `createdAt` | Field to sort by (see per-entity allowed fields) |
+| `sortOrder` | `ASC` \| `DESC` | `DESC` | Sort direction |
+
+### Entity-Specific Filter Parameters
+
+**Companies:** `status`, `industry`, `ownerId`
+**Contacts:** `status`, `companyId`, `assignedTo`, `ownerId`, `doNotContact`
+**Deals:** `status`, `stage`, `priority`, `companyId`, `contactId`, `assignedTo`, `ownerId`
+**Activities:** `type`, `status`, `priority`, `contactId`, `dealId`, `companyId`, `assignedTo`, `ownerId`
+
+**Multi-value filters:** Pass comma-separated values to filter by multiple values:
+```
+GET /api/v1/deals?status=OPEN&stage=proposal,negotiation
+GET /api/v1/contacts?status=active,inactive
 ```
 
 ---
 
 ## Error Handling
 
-### Error Response Format
-
-```json
-{
-  "statusCode": 400,
-  "message": "Validation failed",
-  "errors": [
-    {
-      "field": "email",
-      "message": "Invalid email format"
-    }
-  ]
-}
-```
-
-### HTTP Status Codes
-
-| Code | Meaning | When It Happens |
-|------|---------|-----------------|
-| 200 | OK | Successful GET/PUT/PATCH |
-| 201 | Created | Successful POST |
-| 400 | Bad Request | Validation error, invalid input |
-| 404 | Not Found | Resource doesn't exist |
-| 500 | Internal Server Error | Server-side error |
-
-### Common Errors
-
-**Missing Required Header:**
-```json
-{
-  "statusCode": 400,
-  "message": "x-workspace-id header is required"
-}
-```
-
-**Validation Error:**
-```json
-{
-  "statusCode": 400,
-  "message": "Validation failed",
-  "errors": [
-    {
-      "path": ["name"],
-      "message": "Required"
-    }
-  ]
-}
-```
-
-**Not Found:**
-```json
-{
-  "statusCode": 404,
-  "message": "Company not found"
-}
-```
+| Status | Meaning |
+|--------|---------|
+| 200 | Success |
+| 201 | Created |
+| 204 | No Content (successful delete) |
+| 400 | Validation error or bad request |
+| 404 | Resource not found |
+| 500 | Internal server error |
 
 ---
 
 ## Endpoints
 
+---
+
 ### Health Check
 
-#### GET /health
+#### `GET /health`
+Returns API health status. Does **not** require workspace headers.
 
-Check if the server is running.
+**Response:**
+```json
+{ "status": "ok", "timestamp": "2024-01-15T10:30:00.000Z" }
+```
 
-**No headers required**
+---
+
+### Companies
+
+Base path: `/api/v1/companies`
+
+#### `GET /api/v1/companies`
+List all companies in workspace with pagination, search, and filtering.
+
+**Query Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `page` | integer | Page number |
+| `limit` | integer | Items per page (max 100) |
+| `search` | string | Search name, email, phone, city |
+| `status` | string | Filter: `prospect`, `active`, `churned`, `inactive` (comma-separated) |
+| `industry` | string | Filter by industry enum value(s) |
+| `ownerId` | UUID | Filter by owner user ID |
+| `sortBy` | string | `createdAt`, `name`, `status`, `industry`, `annualRevenue`, `updatedAt` |
+| `sortOrder` | string | `ASC` or `DESC` |
+
+**Response:** Paginated list of Company objects.
+
+---
+
+#### `POST /api/v1/companies`
+Create a new company.
+
+**Request Body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | ✅ | Company name |
+| `email` | string (email) | ✅ | Company email address |
+| `phone` | string | ✅ | Phone number |
+| `website` | string (URL) | ✅ | Company website URL |
+| `industry` | enum | ✅ | See [Industry enum](#industry) |
+| `country` | string | ✅ | Country name |
+| `state` | string | ✅ | State/Province |
+| `city` | string | ✅ | City |
+| `address` | string | ✅ | Street address |
+| `postcode` | string | ✅ | Postal code (max 20 chars) |
+| `leadSource` | enum | ✅ | See [LeadSource enum](#leadsource) |
+| `companySize` | enum | ❌ | See [CompanySize enum](#companysize) |
+| `numberOfEmployees` | integer | ❌ | Actual employee headcount |
+| `annualRevenue` | integer | ❌ | Annual revenue in cents |
+| `linkedinUrl` | string (URL) | ❌ | LinkedIn company page URL |
+| `timezone` | string | ❌ | IANA timezone (e.g. `Australia/Sydney`) |
+| `status` | enum | ❌ | Default: `prospect`. See [CompanyStatus enum](#companystatus) |
+| `description` | string | ❌ | Free-text description |
+| `ownerId` | UUID | ❌ | Assign an owner user ID |
+
+**Response:** `201 Created` — the created Company object.
+
+---
+
+#### `GET /api/v1/companies/:id`
+Get a single company by ID.
+
+**Response:** Company object.
+
+---
+
+#### `PATCH /api/v1/companies/:id`
+Update a company (partial update — only send fields to change).
+
+**Request Body:** Same fields as `POST`, all optional.
+
+**Response:** Updated Company object.
+
+---
+
+#### `DELETE /api/v1/companies/:id`
+Soft delete a company.
+
+**Response:** `204 No Content`
+
+---
+
+#### `PATCH /api/v1/companies/:id/restore`
+Restore a soft-deleted company.
+
+**Response:** Restored Company object.
+
+---
+
+#### `POST /api/v1/companies/bulk-delete`
+Soft delete multiple companies.
+
+**Request Body:**
+```json
+{ "ids": ["uuid1", "uuid2", "uuid3"] }
+```
+
+**Response:**
+```json
+{ "deleted": 3 }
+```
+
+---
+
+#### `GET /api/v1/companies/:id/contacts`
+Get all contacts belonging to a company.
+
+**Response:** Array of Contact objects (no pagination).
+
+---
+
+#### `GET /api/v1/companies/:id/deals`
+Get all deals belonging to a company (paginated).
+
+**Query Parameters:** `page`, `limit`
+
+**Response:** Paginated list of Deal objects.
+
+---
+
+### Contacts
+
+Base path: `/api/v1/contacts`
+
+#### `GET /api/v1/contacts`
+List all contacts in workspace.
+
+**Query Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `page` | integer | Page number |
+| `limit` | integer | Items per page |
+| `search` | string | Search firstName, lastName, email, mobile, jobTitle |
+| `status` | string | Filter: `active`, `inactive`, `bounced`, `unsubscribed` |
+| `companyId` | UUID | Filter contacts by company |
+| `assignedTo` | UUID | Filter by assigned user |
+| `ownerId` | UUID | Filter by owner |
+| `doNotContact` | boolean | `true` or `false` |
+| `sortBy` | string | `createdAt`, `firstName`, `lastName`, `email`, `status`, `lastActivityAt` |
+| `sortOrder` | string | `ASC` or `DESC` |
+
+**Response:** Paginated list of Contact objects (includes nested `company` object).
+
+---
+
+#### `POST /api/v1/contacts`
+Create a new contact.
+
+**Request Body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `companyId` | UUID | ✅ | Company this contact belongs to |
+| `firstName` | string | ✅ | First name |
+| `lastName` | string | ✅ | Last name |
+| `email` | string (email) | ✅ | Email address |
+| `assignedTo` | UUID | ✅ | User ID this contact is assigned to |
+| `phone` | string | ❌ | Office/work phone |
+| `mobile` | string | ❌ | Mobile number |
+| `jobTitle` | string | ❌ | Job title |
+| `department` | string | ❌ | Department within company (max 120 chars) |
+| `linkedinUrl` | string (URL) | ❌ | LinkedIn profile URL |
+| `isPrimary` | boolean | ❌ | Is primary contact for company. Default: `false` |
+| `status` | enum | ❌ | Default: `active`. See [ContactStatus enum](#contactstatus) |
+| `leadSource` | enum | ❌ | How this contact was acquired. See [LeadSource enum](#leadsource) |
+| `preferredContactMethod` | enum | ❌ | `email`, `phone`, or `mobile` |
+| `doNotContact` | boolean | ❌ | DNC flag. Default: `false` |
+
+**Response:** `201 Created` — the created Contact object.
+
+---
+
+#### `GET /api/v1/contacts/:id`
+Get a single contact (includes nested `company`).
+
+---
+
+#### `PATCH /api/v1/contacts/:id`
+Update a contact (partial). Same fields as POST, all optional.
+
+---
+
+#### `DELETE /api/v1/contacts/:id`
+Soft delete a contact. **Response:** `204 No Content`
+
+---
+
+#### `PATCH /api/v1/contacts/:id/restore`
+Restore a soft-deleted contact.
+
+---
+
+#### `POST /api/v1/contacts/bulk-delete`
+```json
+{ "ids": ["uuid1", "uuid2"] }
+```
+**Response:** `{ "deleted": 2 }`
+
+---
+
+#### `GET /api/v1/contacts/:id/deals`
+Get all deals associated with a contact (paginated).
+
+---
+
+#### `GET /api/v1/contacts/:id/activities`
+Get all activities associated with a contact (paginated).
+
+---
+
+### Deals
+
+Base path: `/api/v1/deals`
+
+#### `GET /api/v1/deals`
+List all deals in workspace.
+
+**Query Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `page` | integer | Page number |
+| `limit` | integer | Items per page |
+| `search` | string | Search deal title or company name |
+| `status` | string | `OPEN`, `WON`, `LOST` (comma-separated) |
+| `stage` | string | Deal stage(s), comma-separated |
+| `priority` | string | Priority level(s), comma-separated |
+| `companyId` | UUID | Filter by company |
+| `contactId` | UUID | Filter by contact |
+| `assignedTo` | UUID | Filter by assigned user |
+| `ownerId` | UUID | Filter by owner |
+| `sortBy` | string | `createdAt`, `dealValue`, `title`, `stage`, `status`, `priority`, `expectedCloseDate` |
+| `sortOrder` | string | `ASC` or `DESC` |
+
+**Response:** Paginated list of Deal objects (includes nested `company` and `contact`).
+
+---
+
+#### `POST /api/v1/deals`
+Create a new deal.
+
+**Request Body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `title` | string | ✅ | Deal title (max 200 chars) |
+| `dealValue` | integer | ✅ | Deal value in smallest currency unit (e.g. cents). Must be ≥ 0 |
+| `stage` | enum | ✅ | See [DealStage enum](#dealstage) |
+| `priority` | enum | ✅ | See [DealPriority enum](#dealpriority) |
+| `companyId` | UUID | ✅ | Company associated with the deal |
+| `assignedTo` | UUID | ✅ | User this deal is assigned to |
+| `contactId` | UUID | ❌ | Contact associated (must belong to `companyId`) |
+| `currency` | string | ❌ | 3-letter ISO currency code. Default: `AUD` |
+| `status` | enum | ❌ | Default: `OPEN`. See [DealStatus enum](#dealstatus) |
+| `lostReason` | enum | ❌* | **Required when `status` is `LOST`**. See [DealLostReason enum](#deallostreason) |
+| `probability` | integer | ❌ | Win probability 0–100 |
+| `expectedCloseDate` | date (YYYY-MM-DD) | ❌ | Expected close date |
+| `actualCloseDate` | date (YYYY-MM-DD) | ❌ | Actual close date |
+| `source` | enum | ❌ | How deal originated. See [LeadSource enum](#leadsource) |
+| `description` | string | ❌ | Free-text notes |
+
+**Response:** `201 Created` — the created Deal object.
+
+---
+
+#### `GET /api/v1/deals/:id`
+Get a single deal (includes nested `company` and `contact`).
+
+---
+
+#### `PATCH /api/v1/deals/:id`
+Update a deal. `contactId` can be set to `null` to disassociate.
+
+---
+
+#### `DELETE /api/v1/deals/:id`
+Soft delete a deal. **Response:** `204 No Content`
+
+---
+
+#### `PATCH /api/v1/deals/:id/restore`
+Restore a soft-deleted deal.
+
+---
+
+#### `POST /api/v1/deals/bulk-delete`
+```json
+{ "ids": ["uuid1", "uuid2"] }
+```
+
+---
+
+#### `GET /api/v1/deals/:id/activities`
+Get all activities linked to a deal (paginated).
+
+---
+
+### Activities
+
+Base path: `/api/v1/activities`
+
+#### `GET /api/v1/activities`
+List all activities in workspace.
+
+**Query Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `page` | integer | Page number |
+| `limit` | integer | Items per page |
+| `search` | string | Search subject |
+| `type` | string | Activity type(s), comma-separated |
+| `status` | string | `OPEN` or `DONE` |
+| `priority` | string | `low`, `medium`, `high` |
+| `contactId` | UUID | Filter by contact |
+| `dealId` | UUID | Filter by deal |
+| `companyId` | UUID | Filter by company |
+| `assignedTo` | UUID | Filter by assigned user |
+| `ownerId` | UUID | Filter by owner |
+| `sortBy` | string | `createdAt`, `dueDate`, `subject`, `status`, `priority`, `type` |
+| `sortOrder` | string | `ASC` or `DESC` |
+
+**Response:** Paginated list of Activity objects (includes nested `contact`, `deal`, `company`).
+
+---
+
+#### `POST /api/v1/activities`
+Create a new activity.
+
+**Request Body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `type` | enum | ✅ | See [ActivityType enum](#activitytype) |
+| `priority` | enum | ✅ | See [ActivityPriority enum](#activitypriority) |
+| `subject` | string | ✅ | Activity subject/title (max 200 chars) |
+| `dueDate` | string (YYYY-MM-DD) | ✅ | Due date |
+| `dueTime` | string (HH:MM) | ✅ | Due time in HH:MM or HH:MM:SS |
+| `contactId` | UUID | ✅ | Contact this activity is linked to |
+| `assignedTo` | UUID | ✅ | User this activity is assigned to |
+| `body` | string | ❌ | Activity notes/body |
+| `status` | enum | ❌ | Default: `OPEN`. See [ActivityStatus enum](#activitystatus) |
+| `outcome` | enum | ❌ | Result of the activity. See [ActivityOutcome enum](#activityoutcome) |
+| `location` | string | ❌ | Location (for meetings). Max 300 chars |
+| `duration` | integer | ❌ | Duration in minutes |
+| `reminderAt` | ISO datetime | ❌ | When to send a reminder (e.g. `2024-06-01T09:00:00Z`) |
+| `dealId` | UUID | ❌ | Link to a deal |
+| `companyId` | UUID | ❌ | Link to a company |
+
+**Response:** `201 Created` — the created Activity object. Also updates `lastActivityAt` on the linked contact.
+
+---
+
+#### `GET /api/v1/activities/:id`
+Get a single activity (includes nested `contact`, `deal`, `company`).
+
+---
+
+#### `PATCH /api/v1/activities/:id`
+Update an activity. `dealId` and `companyId` can be set to `null`.
+
+---
+
+#### `DELETE /api/v1/activities/:id`
+Soft delete. **Response:** `204 No Content`
+
+---
+
+#### `PATCH /api/v1/activities/:id/restore`
+Restore a soft-deleted activity.
+
+---
+
+#### `POST /api/v1/activities/bulk-delete`
+```json
+{ "ids": ["uuid1", "uuid2"] }
+```
+
+---
+
+### Reports
+
+#### `GET /api/v1/deals/reports/by-stage`
+Pipeline breakdown: count and total value of open deals grouped by stage.
 
 **Response:**
 ```json
 {
-  "status": "ok",
-  "timestamp": "2024-01-15T10:30:00.000Z"
+  "data": [
+    { "stage": "prospecting", "count": "5", "totalValue": "250000" },
+    { "stage": "proposal", "count": "3", "totalValue": "180000" }
+  ]
 }
 ```
 
 ---
 
-## Companies API
-
-### List All Companies
-#### GET /api/v1/companies
-
-**Headers Required:** x-workspace-id, x-user-id
-
-**Response:**
-```json
-[
-  {
-    "id": "123e4567-e89b-12d3-a456-426614174000",
-    "name": "Acme Corporation",
-    "website": "https://acme.com",
-    "industry": "Technology",
-    "size": "enterprise",
-    "status": "active",
-    "email": "contact@acme.com",
-    "phone": "+1-555-0100",
-    "numberOfEmployees": 5000,
-    "annualRevenue": 50000000,
-    "street": "123 Tech Street",
-    "city": "San Francisco",
-    "state": "CA",
-    "postalCode": "94105",
-    "country": "USA",
-    "workspaceId": "workspace-uuid",
-    "ownerId": "owner-uuid",
-    "createdBy": "user-uuid",
-    "updatedBy": "user-uuid",
-    "createdAt": "2024-01-15T10:30:00.000Z",
-    "updatedAt": "2024-01-15T10:30:00.000Z",
-    "deletedAt": null
-  }
-]
-```
-
----
-
-### Get Company by ID
-#### GET /api/v1/companies/:id
-
-**Headers Required:** x-workspace-id, x-user-id
-
-**URL Parameters:**
-- `id` (UUID) - Company ID
-
-**Response:** Same as single company object above
-
-**Error (404):**
-```json
-{
-  "statusCode": 404,
-  "message": "Company not found"
-}
-```
-
----
-
-### Create Company
-#### POST /api/v1/companies
-
-**Headers Required:** x-workspace-id, x-user-id
-
-**Request Body:**
-```json
-{
-  "name": "Acme Corporation",
-  "website": "https://acme.com",
-  "industry": "Technology",
-  "size": "enterprise",
-  "status": "active",
-  "email": "contact@acme.com",
-  "phone": "+1-555-0100",
-  "numberOfEmployees": 5000,
-  "annualRevenue": 50000000,
-  "street": "123 Tech Street",
-  "city": "San Francisco",
-  "state": "CA",
-  "postalCode": "94105",
-  "country": "USA"
-}
-```
-
-**Required Fields:**
-- `name` (string)
-
-**Optional Fields:**
-- All other fields shown above
-
-**Response (201):** Created company object
-
----
-
-### Update Company
-#### PUT /api/v1/companies/:id
-
-**Headers Required:** x-workspace-id, x-user-id
-
-**Request Body:** Same as create, all fields optional
-
-**Response (200):** Updated company object
-
----
-
-### Delete Company (Soft Delete)
-#### DELETE /api/v1/companies/:id
-
-**Headers Required:** x-workspace-id, x-user-id
-
-**Response (200):**
-```json
-{
-  "message": "Company deleted successfully"
-}
-```
-
-**Note:** This is a soft delete. The company is marked as deleted but not removed from database.
-
----
-
-## Contacts API
-
-### List All Contacts
-#### GET /api/v1/contacts
-
-**Headers Required:** x-workspace-id, x-user-id
-
-**Response:**
-```json
-[
-  {
-    "id": "456e7890-e89b-12d3-a456-426614174000",
-    "firstName": "John",
-    "lastName": "Doe",
-    "email": "john.doe@acme.com",
-    "phone": "+1-555-0101",
-    "mobile": "+1-555-0102",
-    "jobTitle": "CEO",
-    "isPrimary": true,
-    "leadSource": "Website",
-    "street": "123 Main St",
-    "city": "San Francisco",
-    "state": "CA",
-    "postalCode": "94105",
-    "country": "USA",
-    "companyId": "123e4567-e89b-12d3-a456-426614174000",
-    "company": {
-      "id": "123e4567-e89b-12d3-a456-426614174000",
-      "name": "Acme Corporation"
-    },
-    "workspaceId": "workspace-uuid",
-    "ownerId": "owner-uuid",
-    "createdAt": "2024-01-15T10:30:00.000Z",
-    "updatedAt": "2024-01-15T10:30:00.000Z",
-    "deletedAt": null
-  }
-]
-```
-
----
-
-### Get Contact by ID
-#### GET /api/v1/contacts/:id
-
-**Headers Required:** x-workspace-id, x-user-id
-
-**Response:** Single contact object with company relation
-
----
-
-### Create Contact
-#### POST /api/v1/contacts
-
-**Headers Required:** x-workspace-id, x-user-id
-
-**Request Body:**
-```json
-{
-  "firstName": "John",
-  "lastName": "Doe",
-  "email": "john.doe@acme.com",
-  "phone": "+1-555-0101",
-  "mobile": "+1-555-0102",
-  "jobTitle": "CEO",
-  "companyId": "123e4567-e89b-12d3-a456-426614174000",
-  "isPrimary": true,
-  "leadSource": "Website",
-  "street": "123 Main St",
-  "city": "San Francisco",
-  "state": "CA",
-  "postalCode": "94105",
-  "country": "USA"
-}
-```
-
-**Required Fields:**
-- `firstName` (string)
-- `lastName` (string)
-
-**Optional Fields:**
-- All other fields shown above
-
-**Response (201):** Created contact object
-
----
-
-### Update Contact
-#### PUT /api/v1/contacts/:id
-
-**Headers Required:** x-workspace-id, x-user-id
-
-**Request Body:** Same as create, all fields optional
-
-**Response (200):** Updated contact object
-
----
-
-### Delete Contact (Soft Delete)
-#### DELETE /api/v1/contacts/:id
-
-**Headers Required:** x-workspace-id, x-user-id
-
-**Response (200):**
-```json
-{
-  "message": "Contact deleted successfully"
-}
-```
-
----
-
-## Deals API
-
-### List All Deals
-#### GET /api/v1/deals
-
-**Headers Required:** x-workspace-id, x-user-id
-
-**Response:**
-```json
-[
-  {
-    "id": "789e0123-e89b-12d3-a456-426614174000",
-    "title": "Enterprise Software License",
-    "stage": "Negotiation",
-    "amountCents": 5000000,
-    "currency": "AUD",
-    "status": "OPEN",
-    "probability": 75,
-    "expectedCloseDate": "2024-03-31",
-    "description": "Annual enterprise software license deal",
-    "priority": "high",
-    "source": "Referral",
-    "tags": ["enterprise", "recurring"],
-    "companyId": "123e4567-e89b-12d3-a456-426614174000",
-    "contactId": "456e7890-e89b-12d3-a456-426614174000",
-    "ownerId": "owner-uuid",
-    "company": {
-      "id": "123e4567-e89b-12d3-a456-426614174000",
-      "name": "Acme Corporation"
-    },
-    "contact": {
-      "id": "456e7890-e89b-12d3-a456-426614174000",
-      "firstName": "John",
-      "lastName": "Doe"
-    },
-    "owner": {
-      "id": "owner-uuid",
-      "fullName": "Jane Smith"
-    },
-    "createdAt": "2024-01-15T10:30:00.000Z",
-    "updatedAt": "2024-01-15T10:30:00.000Z",
-    "deletedAt": null
-  }
-]
-```
-
----
-
-### Get Deal by ID
-#### GET /api/v1/deals/:id
-
-**Headers Required:** x-workspace-id, x-user-id
-
-**Response:** Single deal object with relations
-
----
-
-### Create Deal
-#### POST /api/v1/deals
-
-**Headers Required:** x-workspace-id, x-user-id
-
-**Request Body:**
-```json
-{
-  "title": "Enterprise Software License",
-  "stage": "Negotiation",
-  "ownerId": "owner-uuid",
-  "amountCents": 5000000,
-  "currency": "AUD",
-  "status": "OPEN",
-  "probability": 75,
-  "expectedCloseDate": "2024-03-31",
-  "description": "Annual enterprise software license deal",
-  "priority": "high",
-  "source": "Referral",
-  "tags": ["enterprise", "recurring"],
-  "companyId": "123e4567-e89b-12d3-a456-426614174000",
-  "contactId": "456e7890-e89b-12d3-a456-426614174000"
-}
-```
-
-**Required Fields:**
-- `title` (string, 1-200 chars)
-- `stage` (string, 1-80 chars)
-- `ownerId` (UUID)
-
-**Optional Fields:**
-- `amountCents` (integer) - Amount in cents
-- `currency` (string, 3 chars, default: "AUD")
-- `status` (enum: "OPEN" | "WON" | "LOST")
-- `probability` (integer, 0-100)
-- `expectedCloseDate` (ISO date string)
-- `description` (string)
-- `priority` (string)
-- `source` (string)
-- `tags` (array of strings)
-- `companyId` (UUID)
-- `contactId` (UUID)
-
-**Response (201):** Created deal object
-
----
-
-### Update Deal
-#### PATCH /api/v1/deals/:id
-
-**Headers Required:** x-workspace-id, x-user-id
-
-**Request Body:** Partial deal object (all fields optional)
-
-**Response (200):** Updated deal object
-
----
-
-### Delete Deal (Soft Delete)
-#### DELETE /api/v1/deals/:id
-
-**Headers Required:** x-workspace-id, x-user-id
-
-**Response (200):**
-```json
-{
-  "message": "Deal deleted successfully"
-}
-```
-
----
-
-## Activities API
-
-### List All Activities
-#### GET /api/v1/activities
-
-**Headers Required:** x-workspace-id, x-user-id
-
-**Response:**
-```json
-[
-  {
-    "id": "abc12345-e89b-12d3-a456-426614174000",
-    "type": "MEETING",
-    "title": "Product Demo",
-    "body": "Demonstrated new features to client",
-    "status": "DONE",
-    "priority": "high",
-    "dueAt": "2024-01-20T14:00:00.000Z",
-    "ownerId": "owner-uuid",
-    "dealId": "789e0123-e89b-12d3-a456-426614174000",
-    "companyId": "123e4567-e89b-12d3-a456-426614174000",
-    "contactId": "456e7890-e89b-12d3-a456-426614174000",
-    "owner": {
-      "id": "owner-uuid",
-      "fullName": "Jane Smith"
-    },
-    "deal": {
-      "id": "789e0123-e89b-12d3-a456-426614174000",
-      "title": "Enterprise Software License"
-    },
-    "company": {
-      "id": "123e4567-e89b-12d3-a456-426614174000",
-      "name": "Acme Corporation"
-    },
-    "contact": {
-      "id": "456e7890-e89b-12d3-a456-426614174000",
-      "firstName": "John",
-      "lastName": "Doe"
-    },
-    "createdAt": "2024-01-15T10:30:00.000Z",
-    "updatedAt": "2024-01-15T10:30:00.000Z",
-    "deletedAt": null
-  }
-]
-```
-
----
-
-### Get Activity by ID
-#### GET /api/v1/activities/:id
-
-**Headers Required:** x-workspace-id, x-user-id
-
-**Response:** Single activity object with relations
-
----
-
-### Create Activity
-#### POST /api/v1/activities
-
-**Headers Required:** x-workspace-id, x-user-id
-
-**Request Body:**
-```json
-{
-  "type": "MEETING",
-  "title": "Product Demo",
-  "body": "Demonstrate new features to client",
-  "status": "OPEN",
-  "priority": "high",
-  "dueAt": "2024-01-20T14:00:00.000Z",
-  "ownerId": "owner-uuid",
-  "dealId": "789e0123-e89b-12d3-a456-426614174000",
-  "companyId": "123e4567-e89b-12d3-a456-426614174000",
-  "contactId": "456e7890-e89b-12d3-a456-426614174000"
-}
-```
-
-**Required Fields:**
-- `type` (enum: "NOTE" | "CALL" | "EMAIL" | "MEETING" | "TASK")
-- `title` (string, 1-200 chars)
-- `ownerId` (UUID)
-
-**Optional Fields:**
-- `body` (string)
-- `status` (enum: "OPEN" | "DONE")
-- `priority` (string)
-- `dueAt` (ISO datetime string)
-- `dealId` (UUID)
-- `companyId` (UUID)
-- `contactId` (UUID)
-
-**Response (201):** Created activity object
-
----
-
-### Update Activity
-#### PATCH /api/v1/activities/:id
-
-**Headers Required:** x-workspace-id, x-user-id
-
-**Request Body:** Partial activity object (all fields optional)
-
-**Response (200):** Updated activity object
-
----
-
-### Delete Activity (Soft Delete)
-#### DELETE /api/v1/activities/:id
-
-**Headers Required:** x-workspace-id, x-user-id
-
-**Response (200):**
-```json
-{
-  "message": "Activity deleted successfully"
-}
-```
-
----
-
-## Users API
-
-### List Workspace Users
-#### GET /api/v1/users
-
-**Headers Required:** x-workspace-id, x-user-id
-
-**Response:**
-```json
-[
-  {
-    "id": "user-uuid",
-    "fullName": "Jane Smith",
-    "email": "jane@example.com",
-    "avatarUrl": "https://example.com/avatar.jpg",
-    "status": "ACTIVE",
-    "externalAuthId": "auth0|123456",
-    "externalAuthProvider": "auth0",
-    "createdAt": "2024-01-15T10:30:00.000Z",
-    "updatedAt": "2024-01-15T10:30:00.000Z",
-    "workspaces": [
-      {
-        "workspaceId": "workspace-uuid",
-        "role": "OWNER"
-      }
-    ]
-  }
-]
-```
-
----
-
-### Get User by ID
-#### GET /api/v1/users/:id
-
-**Headers Required:** x-workspace-id, x-user-id
-
-**Response:** Single user object
-
----
-
-### Create User (Invite)
-#### POST /api/v1/users
-
-**Headers Required:** x-workspace-id, x-user-id
-
-**Request Body:**
-```json
-{
-  "fullName": "John Smith",
-  "email": "john@example.com",
-  "avatarUrl": "https://example.com/avatar.jpg",
-  "externalAuthId": "auth0|789012",
-  "externalAuthProvider": "auth0"
-}
-```
-
-**Required Fields:**
-- `fullName` (string, min 2 chars)
-
-**Optional Fields:**
-- `email` (string, email format)
-- `avatarUrl` (string, URL format)
-- `externalAuthId` (string)
-- `externalAuthProvider` (string)
-
-**Response (201):** Created user object
-
-**Note:** User is added to workspace with MEMBER role by default
-
----
-
-### Update User
-#### PATCH /api/v1/users/:id
-
-**Headers Required:** x-workspace-id, x-user-id
-
-**Request Body:** Partial user object
-
-**Response (200):** Updated user object
-
----
-
-### Update User Role
-#### PATCH /api/v1/users/:id/role
-
-**Headers Required:** x-workspace-id, x-user-id
-
-**Request Body:**
-```json
-{
-  "role": "ADMIN"
-}
-```
-
-**Valid Roles:**
-- `OWNER` - Full control
-- `ADMIN` - Administrative access
-- `MEMBER` - Standard user
-
-**Response (200):**
-```json
-{
-  "message": "Role updated successfully"
-}
-```
-
----
-
-### Delete User (Soft Delete)
-#### DELETE /api/v1/users/:id
-
-**Headers Required:** x-workspace-id, x-user-id
-
-**Response (200):**
-```json
-{
-  "message": "User deleted successfully"
-}
-```
-
----
-
-### Restore Soft-Deleted User
-#### PATCH /api/v1/users/:id/restore
-
-**Headers Required:** x-workspace-id, x-user-id
-
-**Response (200):**
-```json
-{
-  "message": "User restored successfully"
-}
-```
-
----
-
-## Dashboard Bootstrap API
-
-### Get Dashboard Configuration
-#### GET /api/v1/bootstrap
-
-**Headers Required:** x-workspace-id, x-user-id
+#### `GET /api/v1/deals/reports/by-month`
+Monthly deal trend: count and total value for the last 12 months.
 
 **Response:**
 ```json
 {
-  "id": "config-id",
-  "workspaceId": "workspace-uuid",
-  "userId": "user-uuid",
-  "theme": "light",
-  "layout": [
-    { "i": "revenue-chart", "x": 0, "y": 0, "w": 6, "h": 4 },
-    { "i": "deals-pipeline", "x": 6, "y": 0, "w": 6, "h": 4 }
-  ],
-  "items": ["revenue-chart", "deals-pipeline"],
-  "createdAt": "2024-01-15T10:30:00.000Z",
-  "updatedAt": "2024-01-15T10:30:00.000Z"
+  "data": [
+    { "month": "2024-01", "count": "8", "totalValue": "420000" },
+    { "month": "2024-02", "count": "12", "totalValue": "610000" }
+  ]
 }
 ```
 
-**Note:** Returns empty config if none exists yet
+---
+
+#### `GET /api/v1/activities/reports/by-type`
+Activity breakdown by type.
+
+**Response:**
+```json
+{
+  "data": [
+    { "type": "call", "count": "24" },
+    { "type": "meeting", "count": "11" }
+  ]
+}
+```
 
 ---
 
-### Update Dashboard Configuration
-#### PUT /api/v1/bootstrap
+### Users
 
-**Headers Required:** x-workspace-id, x-user-id
+Base path: `/api/v1/users`
+
+#### `GET /api/v1/users`
+List all users in workspace.
+
+#### `POST /api/v1/users`
+Invite/create a user.
+
+**Request Body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `fullName` | string | ✅ | Full name (min 2 chars) |
+| `email` | string (email) | ❌ | Email address |
+| `avatarUrl` | string (URL) | ❌ | Avatar image URL |
+| `role` | enum | ❌ | `OWNER`, `ADMIN`, `MEMBER`. Default: `MEMBER` |
+| `externalAuthProvider` | string | ❌ | Auth provider identifier |
+| `externalAuthId` | string | ❌ | External auth subject ID |
+
+#### `GET /api/v1/users/:id`
+Get a single user.
+
+#### `PATCH /api/v1/users/:id`
+Update user profile.
+
+#### `DELETE /api/v1/users/:id`
+Soft delete user and remove workspace membership.
+
+#### `PATCH /api/v1/users/:id/restore`
+Restore a soft-deleted user.
+
+#### `PATCH /api/v1/users/:id/role`
+Update user's workspace role.
 
 **Request Body:**
 ```json
-{
-  "theme": "dark",
-  "layout": [
-    { "i": "revenue-chart", "x": 0, "y": 0, "w": 12, "h": 4 }
-  ],
-  "items": ["revenue-chart"]
-}
+{ "role": "ADMIN" }
 ```
-
-**Response (200):** Updated config object
-
-**Note:** Creates new config if none exists
 
 ---
 
-## Data Models
+### Dashboard Bootstrap
+
+#### `GET /api/v1/bootstrap`
+Get or create the user's dashboard configuration (stored in MongoDB).
+
+**Response:**
+```json
+{
+  "userId": "uuid",
+  "workspaceId": "uuid",
+  "layout": "default",
+  "items": [],
+  "colors": {}
+}
+```
+
+#### `PUT /api/v1/bootstrap`
+Update dashboard configuration.
+
+---
+
+## Data Models & Field Reference
 
 ### Company
-```typescript
-{
-  id: string;                    // UUID
-  name: string;                  // Required
-  website?: string;
-  industry?: string;
-  size?: string;
-  status?: string;
-  email?: string;
-  phone?: string;
-  numberOfEmployees?: number;
-  annualRevenue?: number;
-  street?: string;
-  city?: string;
-  state?: string;
-  postalCode?: string;
-  country?: string;
-  workspaceId: string;           // UUID
-  ownerId: string;               // UUID
-  createdBy: string;             // UUID
-  updatedBy: string;             // UUID
-  createdAt: string;             // ISO datetime
-  updatedAt: string;             // ISO datetime
-  deletedAt: string | null;      // ISO datetime or null
-  deletedBy?: string;            // UUID
-}
-```
+
+| Field | Type | Nullable | Description |
+|-------|------|----------|-------------|
+| `id` | UUID | No | Primary key |
+| `name` | string | No | Company name |
+| `email` | string | No | Company email |
+| `phone` | string | No | Phone number |
+| `website` | string (URL) | No | Website URL |
+| `industry` | enum | No | Industry type |
+| `companySize` | enum | Yes | Employee size band |
+| `numberOfEmployees` | integer | Yes | Actual employee count |
+| `annualRevenue` | integer | Yes | Annual revenue (cents) |
+| `linkedinUrl` | string | Yes | LinkedIn company URL |
+| `timezone` | string | Yes | IANA timezone |
+| `country` | string | No | Country |
+| `state` | string | No | State/Province |
+| `city` | string | No | City |
+| `address` | string | No | Street address |
+| `postcode` | string | No | Postal code |
+| `leadSource` | enum | No | How company was acquired |
+| `status` | enum | No | Default: `prospect` |
+| `description` | string | Yes | Notes |
+| `lastActivityAt` | datetime | Yes | Auto-updated on new activity |
+| `workspaceId` | UUID | No | Workspace |
+| `ownerId` | UUID | Yes | Owner user |
+| `createdBy` | UUID | Yes | Creator user |
+| `updatedBy` | UUID | Yes | Last updater |
+| `createdAt` | datetime | No | Creation timestamp |
+| `updatedAt` | datetime | No | Last update timestamp |
+| `deletedAt` | datetime | Yes | Soft delete timestamp |
+
+---
 
 ### Contact
-```typescript
-{
-  id: string;                    // UUID
-  firstName: string;             // Required
-  lastName: string;              // Required
-  email?: string;
-  phone?: string;
-  mobile?: string;
-  jobTitle?: string;
-  isPrimary?: boolean;
-  leadSource?: string;
-  street?: string;
-  city?: string;
-  state?: string;
-  postalCode?: string;
-  country?: string;
-  companyId?: string;            // UUID
-  company?: Company;             // Populated relation
-  workspaceId: string;           // UUID
-  ownerId: string;               // UUID
-  createdAt: string;             // ISO datetime
-  updatedAt: string;             // ISO datetime
-  deletedAt: string | null;
-}
-```
+
+| Field | Type | Nullable | Description |
+|-------|------|----------|-------------|
+| `id` | UUID | No | Primary key |
+| `companyId` | UUID | No | Parent company |
+| `firstName` | string | No | First name |
+| `lastName` | string | No | Last name |
+| `email` | string | No | Email address |
+| `phone` | string | Yes | Office phone |
+| `mobile` | string | Yes | Mobile number |
+| `jobTitle` | string | Yes | Job title |
+| `department` | string | Yes | Department (max 120 chars) |
+| `linkedinUrl` | string | Yes | LinkedIn profile URL |
+| `isPrimary` | boolean | No | Primary contact flag. Default: `false` |
+| `status` | enum | No | Default: `active` |
+| `leadSource` | enum | Yes | Acquisition source |
+| `preferredContactMethod` | enum | Yes | `email`, `phone`, or `mobile` |
+| `doNotContact` | boolean | No | DNC flag. Default: `false` |
+| `lastActivityAt` | datetime | Yes | Auto-updated on new activity |
+| `workspaceId` | UUID | No | Workspace |
+| `ownerId` | UUID | Yes | Owner user |
+| `assignedTo` | UUID | No | Assigned user |
+| `createdBy` | UUID | Yes | Creator |
+| `updatedBy` | UUID | Yes | Last updater |
+| `createdAt` | datetime | No | Creation timestamp |
+| `updatedAt` | datetime | No | Last update timestamp |
+| `deletedAt` | datetime | Yes | Soft delete timestamp |
+
+---
 
 ### Deal
-```typescript
-{
-  id: string;                    // UUID
-  title: string;                 // Required, 1-200 chars
-  stage: string;                 // Required, 1-80 chars
-  amountCents?: number;          // Amount in cents
-  currency: string;              // Default: "AUD"
-  status: "OPEN" | "WON" | "LOST";
-  probability?: number;          // 0-100
-  expectedCloseDate?: string;    // ISO date
-  description?: string;
-  priority?: string;
-  source?: string;
-  tags?: string[];               // Array of strings
-  companyId?: string;            // UUID
-  contactId?: string;            // UUID
-  ownerId: string;               // UUID, required
-  company?: Company;
-  contact?: Contact;
-  owner?: User;
-  workspaceId: string;
-  createdAt: string;
-  updatedAt: string;
-  deletedAt: string | null;
-}
-```
+
+| Field | Type | Nullable | Description |
+|-------|------|----------|-------------|
+| `id` | UUID | No | Primary key |
+| `title` | string | No | Deal title (max 200 chars) |
+| `dealValue` | integer | No | Value in smallest currency unit |
+| `currency` | string | No | 3-letter ISO code. Default: `AUD` |
+| `status` | enum | No | Default: `OPEN` |
+| `stage` | enum | No | Pipeline stage |
+| `priority` | enum | No | Priority level |
+| `lostReason` | enum | Yes | Required if `status = LOST` |
+| `probability` | integer | Yes | Win probability 0–100 |
+| `expectedCloseDate` | date | Yes | Expected close (YYYY-MM-DD) |
+| `actualCloseDate` | date | Yes | Actual close date |
+| `source` | enum | Yes | Deal origin source |
+| `description` | string | Yes | Notes |
+| `companyId` | UUID | No | Associated company |
+| `contactId` | UUID | Yes | Associated contact |
+| `workspaceId` | UUID | No | Workspace |
+| `ownerId` | UUID | Yes | Owner user |
+| `assignedTo` | UUID | No | Assigned user |
+| `createdBy` | UUID | Yes | Creator |
+| `updatedBy` | UUID | Yes | Last updater |
+| `createdAt` | datetime | No | Creation timestamp |
+| `updatedAt` | datetime | No | Last update timestamp |
+| `deletedAt` | datetime | Yes | Soft delete timestamp |
+
+---
 
 ### Activity
-```typescript
-{
-  id: string;                    // UUID
-  type: "NOTE" | "CALL" | "EMAIL" | "MEETING" | "TASK"; // Required
-  title: string;                 // Required, 1-200 chars
-  body?: string;
-  status: "OPEN" | "DONE";
-  priority?: string;
-  dueAt?: string;                // ISO datetime
-  ownerId: string;               // UUID, required
-  dealId?: string;               // UUID
-  companyId?: string;            // UUID
-  contactId?: string;            // UUID
-  owner?: User;
-  deal?: Deal;
-  company?: Company;
-  contact?: Contact;
-  workspaceId: string;
-  createdAt: string;
-  updatedAt: string;
-  deletedAt: string | null;
-}
-```
 
-### User
-```typescript
-{
-  id: string;                    // UUID
-  fullName: string;              // Required, min 2 chars
-  email?: string;
-  avatarUrl?: string;
-  status: "ACTIVE" | "INVITED" | "DISABLED";
-  externalAuthId?: string;
-  externalAuthProvider?: string;
-  createdAt: string;
-  updatedAt: string;
-  workspaces?: WorkspaceMember[];
-}
-```
+| Field | Type | Nullable | Description |
+|-------|------|----------|-------------|
+| `id` | UUID | No | Primary key |
+| `type` | enum | No | Activity type |
+| `priority` | enum | No | Priority level |
+| `status` | enum | No | Default: `OPEN` |
+| `subject` | string | No | Subject/title (max 200 chars) |
+| `body` | string | Yes | Notes/description |
+| `outcome` | enum | Yes | Result of the activity |
+| `location` | string | Yes | Meeting location (max 300 chars) |
+| `duration` | integer | Yes | Duration in minutes |
+| `reminderAt` | datetime | Yes | Reminder timestamp |
+| `dueDate` | date | No | Due date (YYYY-MM-DD) |
+| `dueTime` | time | No | Due time (HH:MM) |
+| `contactId` | UUID | No | Linked contact |
+| `dealId` | UUID | Yes | Linked deal |
+| `companyId` | UUID | Yes | Linked company |
+| `workspaceId` | UUID | No | Workspace |
+| `ownerId` | UUID | Yes | Owner user |
+| `assignedTo` | UUID | No | Assigned user |
+| `createdBy` | UUID | Yes | Creator |
+| `updatedBy` | UUID | Yes | Last updater |
+| `createdAt` | datetime | No | Creation timestamp |
+| `updatedAt` | datetime | No | Last update timestamp |
+| `deletedAt` | datetime | Yes | Soft delete timestamp |
 
 ---
 
-## Enums
+## Enum Reference
 
-### Deal Status
-```typescript
-enum DealStatus {
-  OPEN = "OPEN",
-  WON = "WON",
-  LOST = "LOST"
-}
-```
+### Industry
+`technology` | `finance` | `healthcare` | `retail` | `manufacturing` | `education` | `real-estate`
 
-### Activity Type
-```typescript
-enum ActivityType {
-  NOTE = "NOTE",
-  CALL = "CALL",
-  EMAIL = "EMAIL",
-  MEETING = "MEETING",
-  TASK = "TASK"
-}
-```
+### CompanySize
+`1-10` | `11-50` | `51-200` | `201-500` | `501-1000` | `1000+`
 
-### Activity Status
-```typescript
-enum ActivityStatus {
-  OPEN = "OPEN",
-  DONE = "DONE"
-}
-```
+### LeadSource
+`website` | `referral` | `cold-call` | `social-media` | `event` | `partner` | `advertising` | `other`
 
-### User Status
-```typescript
-enum UserStatus {
-  ACTIVE = "ACTIVE",
-  INVITED = "INVITED",
-  DISABLED = "DISABLED"
-}
-```
+### CompanyStatus
+`prospect` | `active` | `churned` | `inactive`
 
-### Workspace Role
-```typescript
-enum WorkspaceRole {
-  OWNER = "OWNER",
-  ADMIN = "ADMIN",
-  MEMBER = "MEMBER"
-}
-```
+### ContactStatus
+`active` | `inactive` | `bounced` | `unsubscribed`
 
----
+### PreferredContactMethod
+`email` | `phone` | `mobile`
 
-## Usage Examples
+### DealStatus
+`OPEN` | `WON` | `LOST`
 
-### Example 1: Create a Complete Deal Flow
+### DealStage
+`prospecting` | `qualification` | `proposal` | `negotiation` | `closed-won` | `closed-lost`
 
-```javascript
-// 1. Create a company
-const company = await fetch('http://localhost:4000/api/v1/companies', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'x-workspace-id': 'your-workspace-id',
-    'x-user-id': 'your-user-id'
-  },
-  body: JSON.stringify({
-    name: 'TechCorp',
-    industry: 'Technology',
-    email: 'contact@techcorp.com'
-  })
-});
+### DealPriority
+`low` | `medium` | `high` | `urgent`
 
-const companyData = await company.json();
+### DealLostReason
+`price` | `competition` | `timing` | `no-budget` | `no-decision` | `product-fit` | `other`
 
-// 2. Create a contact
-const contact = await fetch('http://localhost:4000/api/v1/contacts', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'x-workspace-id': 'your-workspace-id',
-    'x-user-id': 'your-user-id'
-  },
-  body: JSON.stringify({
-    firstName: 'John',
-    lastName: 'Doe',
-    email: 'john@techcorp.com',
-    jobTitle: 'CTO',
-    companyId: companyData.id,
-    isPrimary: true
-  })
-});
+### ActivityType
+`call` | `email` | `meeting` | `task` | `note` | `deadline`
 
-const contactData = await contact.json();
+### ActivityPriority
+`low` | `medium` | `high`
 
-// 3. Create a deal
-const deal = await fetch('http://localhost:4000/api/v1/deals', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'x-workspace-id': 'your-workspace-id',
-    'x-user-id': 'your-user-id'
-  },
-  body: JSON.stringify({
-    title: 'Enterprise Software License',
-    stage: 'Qualification',
-    ownerId: 'your-user-id',
-    amountCents: 10000000, // $100,000
-    currency: 'AUD',
-    status: 'OPEN',
-    probability: 50,
-    companyId: companyData.id,
-    contactId: contactData.id,
-    tags: ['enterprise', 'new-business']
-  })
-});
+### ActivityStatus
+`OPEN` | `DONE`
 
-const dealData = await deal.json();
+### ActivityOutcome
+`completed` | `no-answer` | `left-voicemail` | `rescheduled`
 
-// 4. Create an activity
-const activity = await fetch('http://localhost:4000/api/v1/activities', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'x-workspace-id': 'your-workspace-id',
-    'x-user-id': 'your-user-id'
-  },
-  body: JSON.stringify({
-    type: 'MEETING',
-    title: 'Initial Discovery Call',
-    body: 'Discuss requirements and timeline',
-    status: 'OPEN',
-    priority: 'high',
-    dueAt: '2024-02-01T14:00:00.000Z',
-    ownerId: 'your-user-id',
-    dealId: dealData.id,
-    companyId: companyData.id,
-    contactId: contactData.id
-  })
-});
-```
+### WorkspaceRole
+`OWNER` | `ADMIN` | `MEMBER`
 
 ---
 
-### Example 2: Fetch Deal with Relations
+## Quick Reference — All Endpoints
 
-```javascript
-const deal = await fetch('http://localhost:4000/api/v1/deals/deal-id', {
-  headers: {
-    'x-workspace-id': 'your-workspace-id',
-    'x-user-id': 'your-user-id'
-  }
-});
-
-const dealData = await deal.json();
-
-// dealData includes:
-// - deal.company (company details)
-// - deal.contact (contact details)
-// - deal.owner (user details)
 ```
+GET    /health
 
----
+GET    /api/v1/companies
+POST   /api/v1/companies
+POST   /api/v1/companies/bulk-delete
+GET    /api/v1/companies/:id
+PATCH  /api/v1/companies/:id
+DELETE /api/v1/companies/:id
+PATCH  /api/v1/companies/:id/restore
+GET    /api/v1/companies/:id/contacts
+GET    /api/v1/companies/:id/deals
 
-### Example 3: Update Deal Status
+GET    /api/v1/contacts
+POST   /api/v1/contacts
+POST   /api/v1/contacts/bulk-delete
+GET    /api/v1/contacts/:id
+PATCH  /api/v1/contacts/:id
+DELETE /api/v1/contacts/:id
+PATCH  /api/v1/contacts/:id/restore
+GET    /api/v1/contacts/:id/deals
+GET    /api/v1/contacts/:id/activities
 
-```javascript
-// Mark deal as won
-const response = await fetch('http://localhost:4000/api/v1/deals/deal-id', {
-  method: 'PATCH',
-  headers: {
-    'Content-Type': 'application/json',
-    'x-workspace-id': 'your-workspace-id',
-    'x-user-id': 'your-user-id'
-  },
-  body: JSON.stringify({
-    status: 'WON',
-    stage: 'Closed Won',
-    probability: 100
-  })
-});
+GET    /api/v1/deals/reports/by-stage
+GET    /api/v1/deals/reports/by-month
+GET    /api/v1/deals
+POST   /api/v1/deals
+POST   /api/v1/deals/bulk-delete
+GET    /api/v1/deals/:id
+PATCH  /api/v1/deals/:id
+DELETE /api/v1/deals/:id
+PATCH  /api/v1/deals/:id/restore
+GET    /api/v1/deals/:id/activities
+
+GET    /api/v1/activities/reports/by-type
+GET    /api/v1/activities
+POST   /api/v1/activities
+POST   /api/v1/activities/bulk-delete
+GET    /api/v1/activities/:id
+PATCH  /api/v1/activities/:id
+DELETE /api/v1/activities/:id
+PATCH  /api/v1/activities/:id/restore
+
+GET    /api/v1/users
+POST   /api/v1/users
+GET    /api/v1/users/:id
+PATCH  /api/v1/users/:id
+DELETE /api/v1/users/:id
+PATCH  /api/v1/users/:id/restore
+PATCH  /api/v1/users/:id/role
+
+GET    /api/v1/bootstrap
+PUT    /api/v1/bootstrap
 ```
-
----
-
-### Example 4: React Hook for Fetching Companies
-
-```typescript
-import { useEffect, useState } from 'react';
-
-const useCompanies = (workspaceId: string, userId: string) => {
-  const [companies, setCompanies] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    const fetchCompanies = async () => {
-      try {
-        const response = await fetch('http://localhost:4000/api/v1/companies', {
-          headers: {
-            'x-workspace-id': workspaceId,
-            'x-user-id': userId
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch companies');
-        }
-
-        const data = await response.json();
-        setCompanies(data);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCompanies();
-  }, [workspaceId, userId]);
-
-  return { companies, loading, error };
-};
-```
-
----
-
-### Example 5: TypeScript Types
-
-```typescript
-// Copy these types to your frontend project
-
-export interface Company {
-  id: string;
-  name: string;
-  website?: string;
-  industry?: string;
-  size?: string;
-  status?: string;
-  email?: string;
-  phone?: string;
-  numberOfEmployees?: number;
-  annualRevenue?: number;
-  street?: string;
-  city?: string;
-  state?: string;
-  postalCode?: string;
-  country?: string;
-  workspaceId: string;
-  ownerId: string;
-  createdAt: string;
-  updatedAt: string;
-  deletedAt?: string;
-}
-
-export interface Contact {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email?: string;
-  phone?: string;
-  mobile?: string;
-  jobTitle?: string;
-  isPrimary?: boolean;
-  leadSource?: string;
-  companyId?: string;
-  company?: Company;
-  workspaceId: string;
-  ownerId: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface Deal {
-  id: string;
-  title: string;
-  stage: string;
-  amountCents?: number;
-  currency: string;
-  status: 'OPEN' | 'WON' | 'LOST';
-  probability?: number;
-  expectedCloseDate?: string;
-  description?: string;
-  priority?: string;
-  source?: string;
-  tags?: string[];
-  companyId?: string;
-  contactId?: string;
-  ownerId: string;
-  company?: Company;
-  contact?: Contact;
-  owner?: User;
-  workspaceId: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface Activity {
-  id: string;
-  type: 'NOTE' | 'CALL' | 'EMAIL' | 'MEETING' | 'TASK';
-  title: string;
-  body?: string;
-  status: 'OPEN' | 'DONE';
-  priority?: string;
-  dueAt?: string;
-  ownerId: string;
-  dealId?: string;
-  companyId?: string;
-  contactId?: string;
-  owner?: User;
-  deal?: Deal;
-  company?: Company;
-  contact?: Contact;
-  workspaceId: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface User {
-  id: string;
-  fullName: string;
-  email?: string;
-  avatarUrl?: string;
-  status: 'ACTIVE' | 'INVITED' | 'DISABLED';
-  createdAt: string;
-  updatedAt: string;
-}
-```
-
----
-
-## Rate Limiting
-
-**Current Limit:** 100 requests per 15 minutes per IP address
-
-**Headers:**
-- `X-RateLimit-Limit`: Maximum requests allowed
-- `X-RateLimit-Remaining`: Requests remaining
-- `X-RateLimit-Reset`: Unix timestamp when limit resets
-
-**When Rate Limited (429):**
-```json
-{
-  "statusCode": 429,
-  "message": "Too many requests, please try again later."
-}
-```
-
----
-
-## CORS
-
-**Allowed Origins:** Configured via `CORS_ORIGIN` environment variable
-
-**Development:** All origins allowed (`*`)
-
-**Production:** Set to specific frontend domain
-
----
-
-## Best Practices
-
-1. **Always Include Required Headers**
-   - `x-workspace-id` and `x-user-id` are mandatory for all CRM endpoints
-
-2. **Handle Soft Deletes**
-   - Deleted records have `deletedAt` timestamp
-   - Not returned in list endpoints by default
-
-3. **Use UUIDs**
-   - All IDs are UUIDs (v4)
-   - Generate on frontend or let backend handle
-
-4. **Currency Amounts**
-   - Always stored as cents (integer)
-   - Display: `amountCents / 100`
-   - Example: 5000000 cents = $50,000.00
-
-5. **Date Formats**
-   - ISO 8601 format: `2024-01-15T10:30:00.000Z`
-   - Always UTC timezone
-
-6. **Error Handling**
-   - Always check response status
-   - Parse error messages from response body
-   - Display validation errors per field
-
-7. **Optimistic Updates**
-   - Update UI immediately
-   - Revert on error
-
----
-
-## Questions or Issues?
-
-Create an issue at: https://github.com/anthropics/claude-code/issues
-
----
-
-**Last Updated:** 2024-01-29
-**API Version:** v1
-**Backend Version:** 1.0.0

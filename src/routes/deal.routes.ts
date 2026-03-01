@@ -5,14 +5,31 @@ import {
 	createDealHandler,
 	updateDealHandler,
 	deleteDealHandler,
+	restoreDealHandler,
+	bulkDeleteDealsHandler,
+	getDealActivitiesHandler,
+	getDealsByStageReportHandler,
+	getDealsByMonthReportHandler,
 } from "../controllers/deal.controller.js";
 
 const router = Router();
 
-router.get("/", listDealsHandler);
-router.get("/:id", getDealHandler);
-router.post("/", createDealHandler);
-router.patch("/:id", updateDealHandler);
-router.delete("/:id", deleteDealHandler);
+// Reports (must be before /:id routes)
+router.get("/reports/by-stage", getDealsByStageReportHandler);   // GET /api/v1/deals/reports/by-stage
+router.get("/reports/by-month", getDealsByMonthReportHandler);   // GET /api/v1/deals/reports/by-month
+
+// Collection
+router.get("/", listDealsHandler);              // GET /api/v1/deals
+router.post("/", createDealHandler);            // POST /api/v1/deals
+router.post("/bulk-delete", bulkDeleteDealsHandler); // POST /api/v1/deals/bulk-delete
+
+// Single resource
+router.get("/:id", getDealHandler);             // GET /api/v1/deals/:id
+router.patch("/:id", updateDealHandler);        // PATCH /api/v1/deals/:id
+router.delete("/:id", deleteDealHandler);       // DELETE /api/v1/deals/:id
+router.patch("/:id/restore", restoreDealHandler); // PATCH /api/v1/deals/:id/restore
+
+// Nested resources
+router.get("/:id/activities", getDealActivitiesHandler); // GET /api/v1/deals/:id/activities
 
 export default router;

@@ -108,19 +108,17 @@ export const getApiHeaders = () => ({
 export interface Company {
   id: string;
   name: string;
-  website?: string;
-  industry?: string;
-  size?: string;
-  status?: string;
-  email?: string;
-  phone?: string;
-  numberOfEmployees?: number;
-  annualRevenue?: number;
-  street?: string;
-  city?: string;
-  state?: string;
-  postalCode?: string;
-  country?: string;
+  website: string;
+  industry: Industry;
+  companySize?: CompanySize;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  state: string;
+  postcode: string;
+  country: string;
+  leadSource: LeadSource;
   workspaceId: string;
   ownerId: string;
   createdBy: string;
@@ -135,19 +133,15 @@ export interface Contact {
   id: string;
   firstName: string;
   lastName: string;
-  email?: string;
+  email: string;
   phone?: string;
-  mobile?: string;
+  mobile: string;
   jobTitle?: string;
   isPrimary?: boolean;
-  leadSource?: string;
-  street?: string;
-  city?: string;
-  state?: string;
-  postalCode?: string;
-  country?: string;
-  companyId?: string;
+  companyId: string;         // Required - from company dropdown
   company?: Company;
+  assignedTo: string;        // Required - user UUID
+  assignedUser?: User;
   workspaceId: string;
   ownerId: string;
   createdAt: string;
@@ -158,22 +152,22 @@ export interface Contact {
 export interface Deal {
   id: string;
   title: string;
-  stage: string;
-  amountCents?: number;
+  stage: DealStage;          // Required enum
+  dealValue: number;         // Required - integer value
   currency: string;
   status: DealStatus;
+  priority: DealPriority;    // Required enum
   probability?: number;
   expectedCloseDate?: string;
   description?: string;
-  priority?: string;
-  source?: string;
-  tags?: string[];
-  companyId?: string;
-  contactId?: string;
+  companyId: string;         // Required - from company dropdown
+  contactId: string;         // Required - contact must belong to company
+  assignedTo: string;        // Required - user UUID
   ownerId: string;
   company?: Company;
   contact?: Contact;
   owner?: User;
+  assignedUser?: User;
   workspaceId: string;
   createdAt: string;
   updatedAt: string;
@@ -182,20 +176,19 @@ export interface Deal {
 
 export interface Activity {
   id: string;
-  type: ActivityType;
-  title: string;
+  type: ActivityType;        // Required enum
+  subject: string;           // Required - max 200 chars
   body?: string;
   status: ActivityStatus;
-  priority?: string;
-  dueAt?: string;
+  priority: ActivityPriority; // Required enum
+  dueDate: string;           // Required - YYYY-MM-DD format
+  dueTime: string;           // Required - HH:MM or HH:MM:SS format
+  contactId: string;         // Required - from contact dropdown
+  assignedTo: string;        // Required - user UUID
   ownerId: string;
-  dealId?: string;
-  companyId?: string;
-  contactId?: string;
-  owner?: User;
-  deal?: Deal;
-  company?: Company;
   contact?: Contact;
+  owner?: User;
+  assignedUser?: User;
   workspaceId: string;
   createdAt: string;
   updatedAt: string;
@@ -242,17 +235,70 @@ export enum DealStatus {
   LOST = 'LOST',
 }
 
+export enum DealStage {
+  PROSPECTING = 'prospecting',
+  QUALIFICATION = 'qualification',
+  PROPOSAL = 'proposal',
+  NEGOTIATION = 'negotiation',
+  CLOSED_WON = 'closed-won',
+  CLOSED_LOST = 'closed-lost',
+}
+
+export enum DealPriority {
+  LOW = 'low',
+  MEDIUM = 'medium',
+  HIGH = 'high',
+  URGENT = 'urgent',
+}
+
 export enum ActivityType {
-  NOTE = 'NOTE',
-  CALL = 'CALL',
-  EMAIL = 'EMAIL',
-  MEETING = 'MEETING',
-  TASK = 'TASK',
+  CALL = 'call',
+  EMAIL = 'email',
+  MEETING = 'meeting',
+  TASK = 'task',
+  NOTE = 'note',
+  DEADLINE = 'deadline',
+}
+
+export enum ActivityPriority {
+  LOW = 'low',
+  MEDIUM = 'medium',
+  HIGH = 'high',
 }
 
 export enum ActivityStatus {
   OPEN = 'OPEN',
   DONE = 'DONE',
+}
+
+export enum Industry {
+  TECHNOLOGY = 'technology',
+  FINANCE = 'finance',
+  HEALTHCARE = 'healthcare',
+  RETAIL = 'retail',
+  MANUFACTURING = 'manufacturing',
+  EDUCATION = 'education',
+  REAL_ESTATE = 'real-estate',
+}
+
+export enum CompanySize {
+  SIZE_1_10 = '1-10',
+  SIZE_11_50 = '11-50',
+  SIZE_51_200 = '51-200',
+  SIZE_201_500 = '201-500',
+  SIZE_501_1000 = '501-1000',
+  SIZE_1000_PLUS = '1000+',
+}
+
+export enum LeadSource {
+  WEBSITE = 'website',
+  REFERRAL = 'referral',
+  COLD_CALL = 'cold-call',
+  SOCIAL_MEDIA = 'social-media',
+  EVENT = 'event',
+  PARTNER = 'partner',
+  ADVERTISING = 'advertising',
+  OTHER = 'other',
 }
 
 export enum UserStatus {
@@ -273,72 +319,62 @@ export enum WorkspaceRole {
 
 export interface CreateCompanyRequest {
   name: string;
-  website?: string;
-  industry?: string;
-  size?: string;
-  status?: string;
-  email?: string;
-  phone?: string;
-  numberOfEmployees?: number;
-  annualRevenue?: number;
-  street?: string;
-  city?: string;
-  state?: string;
-  postalCode?: string;
-  country?: string;
+  website: string;
+  industry: Industry;
+  companySize?: CompanySize;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  state: string;
+  postcode: string;
+  country: string;
+  leadSource: LeadSource;
 }
 
 export interface UpdateCompanyRequest extends Partial<CreateCompanyRequest> {}
 
 export interface CreateContactRequest {
-  firstName: string;
-  lastName: string;
-  email?: string;
+  firstName: string;        // Required
+  lastName: string;         // Required
+  email: string;            // Required
+  mobile: string;           // Required
+  companyId: string;        // Required - UUID from company list
+  assignedTo: string;       // Required - UUID from user list
   phone?: string;
-  mobile?: string;
   jobTitle?: string;
-  companyId?: string;
   isPrimary?: boolean;
-  leadSource?: string;
-  street?: string;
-  city?: string;
-  state?: string;
-  postalCode?: string;
-  country?: string;
 }
 
 export interface UpdateContactRequest extends Partial<CreateContactRequest> {}
 
 export interface CreateDealRequest {
-  title: string;
-  stage: string;
-  ownerId: string;
-  amountCents?: number;
+  title: string;            // Required
+  dealValue: number;        // Required - integer
+  stage: DealStage;         // Required
+  priority: DealPriority;   // Required
+  companyId: string;        // Required - UUID from company list
+  contactId: string;        // Required - UUID, must belong to company
+  assignedTo: string;       // Required - UUID from user list
   currency?: string;
   status?: DealStatus;
   probability?: number;
   expectedCloseDate?: string;
   description?: string;
-  priority?: string;
-  source?: string;
-  tags?: string[];
-  companyId?: string;
-  contactId?: string;
 }
 
 export interface UpdateDealRequest extends Partial<CreateDealRequest> {}
 
 export interface CreateActivityRequest {
-  type: ActivityType;
-  title: string;
-  ownerId: string;
+  type: ActivityType;       // Required
+  priority: ActivityPriority; // Required
+  subject: string;          // Required - max 200 chars
+  dueDate: string;          // Required - YYYY-MM-DD format
+  dueTime: string;          // Required - HH:MM or HH:MM:SS format
+  contactId: string;        // Required - UUID from contact list
+  assignedTo: string;       // Required - UUID from user list
   body?: string;
   status?: ActivityStatus;
-  priority?: string;
-  dueAt?: string;
-  dealId?: string;
-  companyId?: string;
-  contactId?: string;
 }
 
 export interface UpdateActivityRequest extends Partial<CreateActivityRequest> {}
@@ -377,6 +413,14 @@ export interface PaginatedResponse<T> {
   total: number;
   page: number;
   limit: number;
+  totalPages: number;
+}
+
+// Query parameters for list endpoints
+export interface ListQueryParams {
+  page?: number;      // Default: 1
+  limit?: number;     // Default: 20
+  search?: string;    // Search term
 }
 ```
 
@@ -480,10 +524,24 @@ import type {
   Company,
   CreateCompanyRequest,
   UpdateCompanyRequest,
+  PaginatedResponse,
+  ListQueryParams,
 } from '@/types/api';
 
+const buildQueryString = (params: ListQueryParams): string => {
+  const searchParams = new URLSearchParams();
+  if (params.page) searchParams.set('page', params.page.toString());
+  if (params.limit) searchParams.set('limit', params.limit.toString());
+  if (params.search) searchParams.set('search', params.search);
+  const query = searchParams.toString();
+  return query ? `?${query}` : '';
+};
+
 export const companiesService = {
-  getAll: () => apiClient.get<Company[]>('/api/v1/companies'),
+  getAll: (params: ListQueryParams = {}) =>
+    apiClient.get<PaginatedResponse<Company>>(
+      `/api/v1/companies${buildQueryString(params)}`
+    ),
 
   getById: (id: string) => apiClient.get<Company>(`/api/v1/companies/${id}`),
 
@@ -498,14 +556,54 @@ export const companiesService = {
 };
 ```
 
+### services/contacts.ts
+
+```typescript
+import { apiClient } from './api';
+import type {
+  Contact,
+  CreateContactRequest,
+  UpdateContactRequest,
+  PaginatedResponse,
+  ListQueryParams,
+} from '@/types/api';
+
+export const contactsService = {
+  getAll: (params: ListQueryParams = {}) =>
+    apiClient.get<PaginatedResponse<Contact>>(
+      `/api/v1/contacts${buildQueryString(params)}`
+    ),
+
+  getById: (id: string) => apiClient.get<Contact>(`/api/v1/contacts/${id}`),
+
+  create: (data: CreateContactRequest) =>
+    apiClient.post<Contact>('/api/v1/contacts', data),
+
+  update: (id: string, data: UpdateContactRequest) =>
+    apiClient.put<Contact>(`/api/v1/contacts/${id}`, data),
+
+  delete: (id: string) =>
+    apiClient.delete<{ message: string }>(`/api/v1/contacts/${id}`),
+};
+```
+
 ### services/deals.ts
 
 ```typescript
 import { apiClient } from './api';
-import type { Deal, CreateDealRequest, UpdateDealRequest } from '@/types/api';
+import type {
+  Deal,
+  CreateDealRequest,
+  UpdateDealRequest,
+  PaginatedResponse,
+  ListQueryParams,
+} from '@/types/api';
 
 export const dealsService = {
-  getAll: () => apiClient.get<Deal[]>('/api/v1/deals'),
+  getAll: (params: ListQueryParams = {}) =>
+    apiClient.get<PaginatedResponse<Deal>>(
+      `/api/v1/deals${buildQueryString(params)}`
+    ),
 
   getById: (id: string) => apiClient.get<Deal>(`/api/v1/deals/${id}`),
 
@@ -517,6 +615,37 @@ export const dealsService = {
 
   delete: (id: string) =>
     apiClient.delete<{ message: string }>(`/api/v1/deals/${id}`),
+};
+```
+
+### services/activities.ts
+
+```typescript
+import { apiClient } from './api';
+import type {
+  Activity,
+  CreateActivityRequest,
+  UpdateActivityRequest,
+  PaginatedResponse,
+  ListQueryParams,
+} from '@/types/api';
+
+export const activitiesService = {
+  getAll: (params: ListQueryParams = {}) =>
+    apiClient.get<PaginatedResponse<Activity>>(
+      `/api/v1/activities${buildQueryString(params)}`
+    ),
+
+  getById: (id: string) => apiClient.get<Activity>(`/api/v1/activities/${id}`),
+
+  create: (data: CreateActivityRequest) =>
+    apiClient.post<Activity>('/api/v1/activities', data),
+
+  update: (id: string, data: UpdateActivityRequest) =>
+    apiClient.patch<Activity>(`/api/v1/activities/${id}`, data),
+
+  delete: (id: string) =>
+    apiClient.delete<{ message: string }>(`/api/v1/activities/${id}`),
 };
 ```
 
@@ -536,46 +665,52 @@ export * from './deals';
 ### hooks/useCompanies.ts
 
 ```typescript
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { companiesService } from '@/services';
-import type { Company, ApiError } from '@/types/api';
+import type { Company, ApiError, ListQueryParams, PaginatedResponse } from '@/types/api';
 
-export const useCompanies = () => {
+export const useCompanies = (initialParams: ListQueryParams = {}) => {
   const [companies, setCompanies] = useState<Company[]>([]);
+  const [pagination, setPagination] = useState({
+    total: 0,
+    page: 1,
+    limit: 20,
+    totalPages: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<ApiError | null>(null);
+  const [params, setParams] = useState<ListQueryParams>(initialParams);
 
-  useEffect(() => {
-    const fetchCompanies = async () => {
-      try {
-        setLoading(true);
-        const data = await companiesService.getAll();
-        setCompanies(data);
-        setError(null);
-      } catch (err) {
-        setError(err as ApiError);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCompanies();
-  }, []);
-
-  const refetch = async () => {
+  const fetchCompanies = useCallback(async (queryParams: ListQueryParams) => {
     try {
       setLoading(true);
-      const data = await companiesService.getAll();
-      setCompanies(data);
+      const response = await companiesService.getAll(queryParams);
+      setCompanies(response.data);
+      setPagination({
+        total: response.total,
+        page: response.page,
+        limit: response.limit,
+        totalPages: response.totalPages,
+      });
       setError(null);
     } catch (err) {
       setError(err as ApiError);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  return { companies, loading, error, refetch };
+  useEffect(() => {
+    fetchCompanies(params);
+  }, [params, fetchCompanies]);
+
+  const refetch = () => fetchCompanies(params);
+
+  const setPage = (page: number) => setParams((prev) => ({ ...prev, page }));
+  const setLimit = (limit: number) => setParams((prev) => ({ ...prev, limit, page: 1 }));
+  const setSearch = (search: string) => setParams((prev) => ({ ...prev, search, page: 1 }));
+
+  return { companies, pagination, loading, error, refetch, setPage, setLimit, setSearch };
 };
 ```
 
@@ -651,46 +786,52 @@ export const useCreateCompany = () => {
 ### hooks/useDeals.ts
 
 ```typescript
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { dealsService } from '@/services';
-import type { Deal, ApiError } from '@/types/api';
+import type { Deal, ApiError, ListQueryParams } from '@/types/api';
 
-export const useDeals = () => {
+export const useDeals = (initialParams: ListQueryParams = {}) => {
   const [deals, setDeals] = useState<Deal[]>([]);
+  const [pagination, setPagination] = useState({
+    total: 0,
+    page: 1,
+    limit: 20,
+    totalPages: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<ApiError | null>(null);
+  const [params, setParams] = useState<ListQueryParams>(initialParams);
 
-  useEffect(() => {
-    const fetchDeals = async () => {
-      try {
-        setLoading(true);
-        const data = await dealsService.getAll();
-        setDeals(data);
-        setError(null);
-      } catch (err) {
-        setError(err as ApiError);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDeals();
-  }, []);
-
-  const refetch = async () => {
+  const fetchDeals = useCallback(async (queryParams: ListQueryParams) => {
     try {
       setLoading(true);
-      const data = await dealsService.getAll();
-      setDeals(data);
+      const response = await dealsService.getAll(queryParams);
+      setDeals(response.data);
+      setPagination({
+        total: response.total,
+        page: response.page,
+        limit: response.limit,
+        totalPages: response.totalPages,
+      });
       setError(null);
     } catch (err) {
       setError(err as ApiError);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  return { deals, loading, error, refetch };
+  useEffect(() => {
+    fetchDeals(params);
+  }, [params, fetchDeals]);
+
+  const refetch = () => fetchDeals(params);
+
+  const setPage = (page: number) => setParams((prev) => ({ ...prev, page }));
+  const setLimit = (limit: number) => setParams((prev) => ({ ...prev, limit, page: 1 }));
+  const setSearch = (search: string) => setParams((prev) => ({ ...prev, search, page: 1 }));
+
+  return { deals, pagination, loading, error, refetch, setPage, setLimit, setSearch };
 };
 ```
 

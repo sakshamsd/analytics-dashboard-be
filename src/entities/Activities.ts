@@ -8,21 +8,35 @@ import {
 	ManyToOne,
 	JoinColumn,
 } from "typeorm";
+import { Contact } from "./Contact.js";
 import { Deals } from "./Deals.js";
 import { Company } from "./Companies.js";
-import { Contact } from "./Contact.js";
 
 export enum ActivityType {
-	NOTE = "NOTE",
-	CALL = "CALL",
-	EMAIL = "EMAIL",
-	MEETING = "MEETING",
-	TASK = "TASK",
+	CALL = "call",
+	EMAIL = "email",
+	MEETING = "meeting",
+	TASK = "task",
+	NOTE = "note",
+	DEADLINE = "deadline",
+}
+
+export enum ActivityPriority {
+	LOW = "low",
+	MEDIUM = "medium",
+	HIGH = "high",
 }
 
 export enum ActivityStatus {
 	OPEN = "OPEN",
 	DONE = "DONE",
+}
+
+export enum ActivityOutcome {
+	COMPLETED = "completed",
+	NO_ANSWER = "no-answer",
+	LEFT_VOICEMAIL = "left-voicemail",
+	RESCHEDULED = "rescheduled",
 }
 
 @Entity({ name: "activities" })
@@ -39,49 +53,69 @@ export class Activities {
 	type!: ActivityType;
 
 	@Index()
+	@Column({ type: "enum", enum: ActivityPriority })
+	priority!: ActivityPriority;
+
+	@Index()
 	@Column({ type: "enum", enum: ActivityStatus, default: ActivityStatus.OPEN })
 	status!: ActivityStatus;
 
 	@Column({ type: "varchar", length: 200 })
-	title!: string;
+	subject!: string;
 
 	@Column({ type: "text", nullable: true })
 	body!: string | null;
 
-	@Index()
-	@Column({ type: "timestamptz", nullable: true })
-	dueAt!: Date | null;
+	@Column({ type: "enum", enum: ActivityOutcome, nullable: true })
+	outcome?: ActivityOutcome | null;
 
-	@Column({ type: "varchar", nullable: true })
-	priority?: string | null;
+	@Column({ type: "varchar", length: 300, nullable: true })
+	location?: string | null;
+
+	@Column({ type: "int", nullable: true })
+	duration?: number | null;
+
+	@Column({ type: "timestamptz", nullable: true, name: "reminder_at" })
+	reminderAt?: Date | null;
+
+	@Index()
+	@Column({ name: "due_date", type: "date" })
+	dueDate!: string;
+
+	@Column({ name: "due_time", type: "time" })
+	dueTime!: string;
 
 	@Index()
 	@Column({ type: "uuid", nullable: true })
 	ownerId!: string | null;
 
 	@Index()
-	@Column({ type: "uuid", nullable: true })
-	dealId!: string | null;
+	@Column({ name: "contact_id", type: "uuid" })
+	contactId!: string;
 
-	@ManyToOne(() => Deals, { nullable: true, onDelete: "SET NULL" })
-	@JoinColumn({ name: "dealId" })
+	@ManyToOne(() => Contact, { onDelete: "CASCADE" })
+	@JoinColumn({ name: "contact_id" })
+	contact!: Contact;
+
+	@Index()
+	@Column({ name: "deal_id", type: "uuid", nullable: true })
+	dealId?: string | null;
+
+	@ManyToOne(() => Deals, { onDelete: "SET NULL", nullable: true })
+	@JoinColumn({ name: "deal_id" })
 	deal?: Deals | null;
 
 	@Index()
-	@Column({ type: "uuid", nullable: true })
-	companyId!: string | null;
+	@Column({ name: "company_id", type: "uuid", nullable: true })
+	companyId?: string | null;
 
-	@ManyToOne(() => Company, { nullable: true, onDelete: "SET NULL" })
-	@JoinColumn({ name: "companyId" })
+	@ManyToOne(() => Company, { onDelete: "SET NULL", nullable: true })
+	@JoinColumn({ name: "company_id" })
 	company?: Company | null;
 
 	@Index()
-	@Column({ type: "uuid", nullable: true })
-	contactId!: string | null;
-
-	@ManyToOne(() => Contact, { nullable: true, onDelete: "SET NULL" })
-	@JoinColumn({ name: "contactId" })
-	contact?: Contact | null;
+	@Column({ name: "assigned_to", type: "uuid" })
+	assignedTo!: string;
 
 	@CreateDateColumn()
 	createdAt!: Date;

@@ -8,8 +8,6 @@ import {
 	Index,
 } from "typeorm";
 
-import { Contact } from "./Contact.js";
-
 export enum Industry {
 	TECHNOLOGY = "technology",
 	FINANCE = "finance",
@@ -27,6 +25,24 @@ export enum CompanySize {
 	SIZE_201_500 = "201-500",
 	SIZE_501_1000 = "501-1000",
 	SIZE_1000_PLUS = "1000+",
+}
+
+export enum LeadSource {
+	WEBSITE = "website",
+	REFERRAL = "referral",
+	COLD_CALL = "cold-call",
+	SOCIAL_MEDIA = "social-media",
+	EVENT = "event",
+	PARTNER = "partner",
+	ADVERTISING = "advertising",
+	OTHER = "other",
+}
+
+export enum CompanyStatus {
+	PROSPECT = "prospect",
+	ACTIVE = "active",
+	CHURNED = "churned",
+	INACTIVE = "inactive",
 }
 
 @Entity({ name: "companies" })
@@ -52,8 +68,20 @@ export class Company {
 	@Column({ type: "enum", enum: CompanySize, nullable: true })
 	companySize?: CompanySize | null;
 
-	@OneToMany(() => Contact, (contact) => contact.company)
-	contacts!: Contact[];
+	@Column({ type: "int", nullable: true, name: "number_of_employees" })
+	numberOfEmployees?: number | null;
+
+	@Column({ type: "bigint", nullable: true, name: "annual_revenue" })
+	annualRevenue?: number | null;
+
+	@Column({ type: "varchar", length: 500, nullable: true, name: "linkedin_url" })
+	linkedinUrl?: string | null;
+
+	@Column({ type: "varchar", length: 60, nullable: true })
+	timezone?: string | null;
+
+	@OneToMany("Contact", "company")
+	contacts!: any[];
 
 	@Column({ type: "varchar" })
 	country!: string;
@@ -67,17 +95,21 @@ export class Company {
 	@Column({ type: "varchar" })
 	address!: string;
 
-	@Column({ type: "varchar" })
+	@Column({ type: "varchar", length: 20 })
 	postcode!: string;
 
-	@Column({ type: "varchar" })
-	leadSource!: string;
+	@Column({ type: "enum", enum: LeadSource })
+	leadSource!: LeadSource;
 
 	@Column({ type: "text", nullable: true })
 	description?: string | null;
 
-	@Column({ type: "varchar", default: "prospect" })
-	status!: string;
+	@Index()
+	@Column({ type: "enum", enum: CompanyStatus, default: CompanyStatus.PROSPECT })
+	status!: CompanyStatus;
+
+	@Column({ type: "timestamptz", nullable: true, name: "last_activity_at" })
+	lastActivityAt?: Date | null;
 
 	@CreateDateColumn({ name: "created_at", type: "timestamptz" })
 	createdAt!: Date;

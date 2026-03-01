@@ -6,17 +6,42 @@ import {
 	CreateDateColumn,
 	UpdateDateColumn,
 	ManyToOne,
-	OneToMany,
 	JoinColumn,
 } from "typeorm";
 import { Company } from "./Companies.js";
 import { Contact } from "./Contact.js";
-import { Activities } from "./Activities.js";
+import { LeadSource } from "./Companies.js";
+
+export enum DealStage {
+	PROSPECTING = "prospecting",
+	QUALIFICATION = "qualification",
+	PROPOSAL = "proposal",
+	NEGOTIATION = "negotiation",
+	CLOSED_WON = "closed-won",
+	CLOSED_LOST = "closed-lost",
+}
+
+export enum DealPriority {
+	LOW = "low",
+	MEDIUM = "medium",
+	HIGH = "high",
+	URGENT = "urgent",
+}
 
 export enum DealStatus {
 	OPEN = "OPEN",
 	WON = "WON",
 	LOST = "LOST",
+}
+
+export enum DealLostReason {
+	PRICE = "price",
+	COMPETITION = "competition",
+	TIMING = "timing",
+	NO_BUDGET = "no-budget",
+	NO_DECISION = "no-decision",
+	PRODUCT_FIT = "product-fit",
+	OTHER = "other",
 }
 
 @Entity({ name: "deals" })
@@ -32,8 +57,8 @@ export class Deals {
 	@Column({ type: "varchar", length: 200 })
 	title!: string;
 
-	@Column({ type: "int", nullable: true })
-	amountCents!: number | null;
+	@Column({ name: "deal_value", type: "int" })
+	dealValue!: number;
 
 	@Column({ type: "char", length: 3, default: "AUD" })
 	currency!: string;
@@ -43,49 +68,54 @@ export class Deals {
 	status!: DealStatus;
 
 	@Index()
-	@Column({ type: "varchar", length: 80, default: "New" })
-	stage!: string;
+	@Column({ type: "enum", enum: DealStage })
+	stage!: DealStage;
 
-	@Column({ type: "date", nullable: true })
+	@Index()
+	@Column({ type: "enum", enum: DealPriority })
+	priority!: DealPriority;
+
+	@Column({ type: "date", nullable: true, name: "expected_close_date" })
 	expectedCloseDate!: string | null;
+
+	@Column({ type: "date", nullable: true, name: "actual_close_date" })
+	actualCloseDate?: string | null;
+
+	@Column({ type: "enum", enum: DealLostReason, nullable: true, name: "lost_reason" })
+	lostReason?: DealLostReason | null;
+
+	@Column({ type: "enum", enum: LeadSource, nullable: true })
+	source?: LeadSource | null;
 
 	@Column({ type: "text", nullable: true })
 	description?: string | null;
 
-	@Column({ type: "varchar", nullable: true })
-	priority?: string | null;
-
 	@Column({ type: "int", nullable: true })
 	probability?: number | null;
-
-	@Column({ type: "varchar", nullable: true })
-	source?: string | null;
-
-	@Column({ type: "jsonb", nullable: true })
-	tags?: string[] | null;
 
 	@Index()
 	@Column({ type: "uuid", nullable: true })
 	ownerId!: string | null;
 
 	@Index()
-	@Column({ type: "uuid", nullable: true })
-	companyId!: string | null;
+	@Column({ name: "company_id", type: "uuid" })
+	companyId!: string;
 
-	@ManyToOne(() => Company, { nullable: true, onDelete: "SET NULL" })
-	@JoinColumn({ name: "companyId" })
-	company?: Company | null;
+	@ManyToOne(() => Company, { onDelete: "CASCADE" })
+	@JoinColumn({ name: "company_id" })
+	company!: Company;
 
 	@Index()
-	@Column({ type: "uuid", nullable: true })
+	@Column({ name: "contact_id", type: "uuid", nullable: true })
 	contactId!: string | null;
 
-	@ManyToOne(() => Contact, { nullable: true, onDelete: "SET NULL" })
-	@JoinColumn({ name: "contactId" })
-	contact?: Contact | null;
+	@ManyToOne(() => Contact, { onDelete: "SET NULL", nullable: true })
+	@JoinColumn({ name: "contact_id" })
+	contact!: Contact | null;
 
-	@OneToMany(() => Activities, (a) => a.deal)
-	activities?: Activities[];
+	@Index()
+	@Column({ name: "assigned_to", type: "uuid" })
+	assignedTo!: string;
 
 	@CreateDateColumn()
 	createdAt!: Date;

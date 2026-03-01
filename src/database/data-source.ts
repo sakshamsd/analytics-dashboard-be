@@ -2,11 +2,11 @@ import { DataSource } from "typeorm";
 import { Company } from "../entities/Companies.js";
 import { Contact } from "../entities/Contact.js";
 // import { Lead } from "../entities/Lead";
-import { Deals } from "../entities/Deals.js";
-import { Activities } from "../entities/Activities.js";
-import { User } from "../entities/User.js";
-import { Workspace } from "../entities/Workspace.js";
-import { WorkspaceMember } from "../entities/WorkspaceMember.js";
+// import { Deals } from "../entities/Deals.js";
+// import { Activities } from "../entities/Activities.js";
+// import { User } from "../entities/User.js";
+// import { Workspace } from "../entities/Workspace.js";
+// import { WorkspaceMember } from "../entities/WorkspaceMember.js";
 
 const isProd = process.env.NODE_ENV === "production";
 
@@ -14,7 +14,8 @@ export const AppDataSource = new DataSource({
 	type: "postgres",
 	url: process.env.DATABASE_URL || "",
 	ssl: isProd ? { rejectUnauthorized: false } : false,
-	entities: [Company, Contact, Deals, Activities, User, Workspace, WorkspaceMember],
+	// entities: [Company, Contact, Deals, Activities, User, Workspace, WorkspaceMember],
+	entities: ["dist/entities/**/*.js"],
 	migrations: ["dist/migrations/*.js"],
 	synchronize: false,
 });

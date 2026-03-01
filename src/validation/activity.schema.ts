@@ -1,18 +1,22 @@
 import { z } from "zod";
-import { ActivityStatus, ActivityType } from "../entities/Activities.js";
+import { ActivityStatus, ActivityType, ActivityPriority, ActivityOutcome } from "../entities/Activities.js";
 
 export const createActivitySchema = z.object({
 	type: z.nativeEnum(ActivityType),
-	title: z.string().min(1, "Subject is required").max(200),
+	priority: z.nativeEnum(ActivityPriority),
+	subject: z.string().min(1, "Subject is required").max(200),
 	body: z.string().optional(),
-	dueAt: z.string().datetime().optional(),
+	outcome: z.nativeEnum(ActivityOutcome).optional(),
+	location: z.string().max(300).optional(),
+	duration: z.number().int().min(0).optional(),
+	reminderAt: z.string().datetime().optional(),
+	dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Due date must be in YYYY-MM-DD format"),
+	dueTime: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/, "Due time must be in HH:MM or HH:MM:SS format"),
 	status: z.nativeEnum(ActivityStatus).optional(),
-	priority: z.string().optional(),
-
-	ownerId: z.string().uuid(),
-	dealId: z.string().uuid().nullable().optional(),
-	companyId: z.string().uuid().nullable().optional(),
-	contactId: z.string().uuid().nullable().optional(),
+	contactId: z.string().uuid("Related contact is required"),
+	dealId: z.string().uuid().optional(),
+	companyId: z.string().uuid().optional(),
+	assignedTo: z.string().uuid("Assigned to is required"),
 });
 
 export const updateActivitySchema = createActivitySchema.partial();
