@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import type{ MigrationInterface, QueryRunner } from "typeorm";
 
 export class CrmImprovements1766200000000 implements MigrationInterface {
 	name = "CrmImprovements1766200000000";

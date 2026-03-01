@@ -159,12 +159,12 @@ export async function createContact(
 		department: input.department ?? null,
 		linkedinUrl: input.linkedinUrl ?? null,
 		isPrimary: input.isPrimary ?? false,
-		status: input.status,
+		status: input.status ?? undefined,
 		leadSource: input.leadSource ?? null,
 		preferredContactMethod: input.preferredContactMethod ?? null,
 		doNotContact: input.doNotContact ?? false,
 		assignedTo: input.assignedTo,
-	});
+	} as any);
 
 	return contactRepo.save(contact);
 }
@@ -211,7 +211,8 @@ export async function updateContact(
 	if (input.isPrimary !== undefined) contact.isPrimary = input.isPrimary;
 	if (input.status !== undefined) contact.status = input.status;
 	if (input.leadSource !== undefined) contact.leadSource = input.leadSource ?? null;
-	if (input.preferredContactMethod !== undefined) contact.preferredContactMethod = input.preferredContactMethod ?? null;
+	if (input.preferredContactMethod !== undefined)
+		contact.preferredContactMethod = input.preferredContactMethod ?? null;
 	if (input.doNotContact !== undefined) contact.doNotContact = input.doNotContact;
 
 	contact.updatedBy = userId;
