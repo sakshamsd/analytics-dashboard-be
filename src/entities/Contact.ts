@@ -29,6 +29,10 @@ export class Contact {
 	id!: string;
 
 	@Index()
+	@Column({ type: "uuid" })
+	workspaceId!: string;
+
+	@Index()
 	@Column({ name: "company_id", type: "uuid" })
 	companyId!: string;
 
@@ -39,10 +43,7 @@ export class Contact {
 	company!: any;
 
 	@Column({ type: "varchar" })
-	firstName!: string;
-
-	@Column({ type: "varchar" })
-	lastName!: string;
+	name!: string;
 
 	@Column({ type: "varchar" })
 	email!: string;
@@ -62,9 +63,6 @@ export class Contact {
 	@Column({ type: "varchar", length: 500, nullable: true, name: "linkedin_url" })
 	linkedinUrl?: string | null;
 
-	@Column({ type: "boolean", default: false })
-	isPrimary!: boolean;
-
 	@Index()
 	@Column({ type: "enum", enum: ContactStatus, default: ContactStatus.ACTIVE })
 	status!: ContactStatus;
@@ -75,29 +73,22 @@ export class Contact {
 	@Column({ type: "enum", enum: PreferredContactMethod, nullable: true, name: "preferred_contact_method" })
 	preferredContactMethod?: PreferredContactMethod | null;
 
+	@Column({ type: "boolean", default: false })
+	isPrimary!: boolean;
+
 	@Column({ type: "boolean", default: false, name: "do_not_contact" })
 	doNotContact!: boolean;
 
-	@Column({ type: "timestamptz", nullable: true, name: "last_activity_at" })
-	lastActivityAt?: Date | null;
-
-	@CreateDateColumn({ name: "created_at", type: "timestamptz" })
-	createdAt!: Date;
-
-	@UpdateDateColumn({ name: "updated_at", type: "timestamptz" })
-	updatedAt!: Date;
-
 	@Index()
-	@Column({ type: "uuid" })
-	workspaceId!: string;
+	@Column({ name: "assigned_to", type: "uuid" })
+	assignedTo!: string;
 
 	@Index()
 	@Column({ type: "uuid", nullable: true })
 	ownerId!: string | null;
 
-	@Index()
-	@Column({ name: "assigned_to", type: "uuid" })
-	assignedTo!: string;
+	@Column({ type: "timestamptz", nullable: true, name: "last_activity_at" })
+	lastActivityAt?: Date | null;
 
 	@Column({ type: "uuid", nullable: true })
 	createdBy!: string | null;
@@ -105,9 +96,15 @@ export class Contact {
 	@Column({ type: "uuid", nullable: true })
 	updatedBy!: string | null;
 
-	@Column({ type: "timestamp", nullable: true })
-	deletedAt!: Date | null;
-
 	@Column({ type: "uuid", nullable: true })
 	deletedBy!: string | null;
+
+	@CreateDateColumn({ name: "created_at", type: "timestamptz" })
+	createdAt!: Date;
+
+	@UpdateDateColumn({ name: "updated_at", type: "timestamptz" })
+	updatedAt!: Date;
+
+	@Column({ type: "timestamp", nullable: true })
+	deletedAt!: Date | null;
 }

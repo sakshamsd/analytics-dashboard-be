@@ -4,8 +4,7 @@ import { LeadSource } from "../entities/Companies.js";
 
 export const createContactSchema = z.object({
 	companyId: z.string().uuid("Company is required"),
-	firstName: z.string().min(1, "First name is required"),
-	lastName: z.string().min(1, "Last name is required"),
+	name: z.string().min(1, "Name is required"),
 	email: z.string().email("Invalid email format"),
 	phone: z.string().optional(),
 	mobile: z.string().optional(),

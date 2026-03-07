@@ -36,8 +36,7 @@ export interface PaginatedResult<T> {
 const ALLOWED_SORT_FIELDS: Record<string, string> = {
 	createdAt: "contact.createdAt",
 	updatedAt: "contact.updatedAt",
-	firstName: "contact.firstName",
-	lastName: "contact.lastName",
+	name: "contact.name",
 	email: "contact.email",
 	status: "contact.status",
 	lastActivityAt: "contact.lastActivityAt",
@@ -65,7 +64,7 @@ export async function listContacts(
 	if (params.search) {
 		const searchTerm = `%${params.search}%`;
 		qb.andWhere(
-			"(contact.firstName ILIKE :search OR contact.lastName ILIKE :search OR contact.email ILIKE :search OR contact.mobile ILIKE :search OR contact.jobTitle ILIKE :search)",
+			"(contact.name ILIKE :search OR contact.email ILIKE :search OR contact.mobile ILIKE :search OR contact.jobTitle ILIKE :search)",
 			{ search: searchTerm }
 		);
 	}
@@ -150,8 +149,7 @@ export async function createContact(
 		createdBy: userId,
 		updatedBy: userId,
 		companyId: input.companyId,
-		firstName: input.firstName,
-		lastName: input.lastName,
+		name: input.name,
 		email: input.email,
 		phone: input.phone ?? null,
 		mobile: input.mobile ?? null,
@@ -200,8 +198,7 @@ export async function updateContact(
 		contact.assignedTo = input.assignedTo;
 	}
 
-	if (input.firstName !== undefined) contact.firstName = input.firstName;
-	if (input.lastName !== undefined) contact.lastName = input.lastName;
+	if (input.name !== undefined) contact.name = input.name;
 	if (input.email !== undefined) contact.email = input.email;
 	if (input.phone !== undefined) contact.phone = input.phone ?? null;
 	if (input.mobile !== undefined) contact.mobile = input.mobile ?? null;

@@ -42,6 +42,14 @@ export class CrmImprovements1766200000000 implements MigrationInterface {
 
 		// ── Contacts ──────────────────────────────────────────────────────────
 
+		// Merge firstName + lastName into a single name column
+		await queryRunner.query(`ALTER TABLE "contacts" ADD COLUMN IF NOT EXISTS "name" varchar`);
+		await queryRunner.query(`UPDATE "contacts" SET "name" = TRIM(COALESCE("firstName", '') || ' ' || COALESCE("lastName", '')) WHERE "name" IS NULL`);
+		await queryRunner.query(`UPDATE "contacts" SET "name" = 'Unknown' WHERE "name" IS NULL OR "name" = ''`);
+		await queryRunner.query(`ALTER TABLE "contacts" ALTER COLUMN "name" SET NOT NULL`);
+		await queryRunner.query(`ALTER TABLE "contacts" DROP COLUMN IF EXISTS "firstName"`);
+		await queryRunner.query(`ALTER TABLE "contacts" DROP COLUMN IF EXISTS "lastName"`);
+
 		// Make mobile optional
 		await queryRunner.query(`ALTER TABLE "contacts" ALTER COLUMN "mobile" DROP NOT NULL`);
 
@@ -56,7 +64,7 @@ export class CrmImprovements1766200000000 implements MigrationInterface {
 		`);
 		await queryRunner.query(`ALTER TABLE "contacts" ADD COLUMN IF NOT EXISTS "preferred_contact_method" "public"."contacts_preferred_contact_method_enum"`);
 
-		await queryRunner.query(`ALTER TABLE "contacts" ADD COLUMN IF NOT EXISTS "lead_source" "public"."companies_lead_source_enum"`);
+		await queryRunner.query(`ALTER TABLE "contacts" ADD COLUMN IF NOT EXISTS "lead_source" lead_source_enum`);
 		await queryRunner.query(`ALTER TABLE "contacts" ADD COLUMN IF NOT EXISTS "department" varchar(120)`);
 		await queryRunner.query(`ALTER TABLE "contacts" ADD COLUMN IF NOT EXISTS "linkedin_url" varchar(500)`);
 		await queryRunner.query(`ALTER TABLE "contacts" ADD COLUMN IF NOT EXISTS "do_not_contact" boolean NOT NULL DEFAULT false`);
@@ -84,12 +92,16 @@ export class CrmImprovements1766200000000 implements MigrationInterface {
 		`);
 		await queryRunner.query(`ALTER TABLE "deals" ADD COLUMN IF NOT EXISTS "lost_reason" "public"."deals_lost_reason_enum"`);
 		await queryRunner.query(`ALTER TABLE "deals" ADD COLUMN IF NOT EXISTS "actual_close_date" date`);
-		await queryRunner.query(`ALTER TABLE "deals" ADD COLUMN IF NOT EXISTS "source" "public"."companies_lead_source_enum"`);
+		await queryRunner.query(`ALTER TABLE "deals" ADD COLUMN IF NOT EXISTS "source" lead_source_enum`);
 
 		// Rename expectedCloseDate column for consistency
-		await queryRunner.query(`ALTER TABLE "deals" RENAME COLUMN "expectedCloseDate" TO "expected_close_date" WHERE EXISTS (
-			SELECT 1 FROM information_schema.columns WHERE table_name='deals' AND column_name='expectedCloseDate'
-		)`);
+		await queryRunner.query(`
+			DO $$ BEGIN
+				IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='deals' AND column_name='expectedCloseDate') THEN
+					ALTER TABLE "deals" RENAME COLUMN "expectedCloseDate" TO "expected_close_date";
+				END IF;
+			END $$
+		`);
 
 		// ── Activities ──────────────────────────────────────────────────────────
 
@@ -153,6 +165,15 @@ export class CrmImprovements1766200000000 implements MigrationInterface {
 		await queryRunner.query(`ALTER TABLE "contacts" DROP COLUMN IF EXISTS "status"`);
 		await queryRunner.query(`DROP TYPE IF EXISTS "public"."contacts_status_enum"`);
 		await queryRunner.query(`ALTER TABLE "contacts" ALTER COLUMN "mobile" SET NOT NULL`);
+
+		// Restore firstName + lastName from name
+		await queryRunner.query(`ALTER TABLE "contacts" ADD COLUMN IF NOT EXISTS "firstName" varchar`);
+		await queryRunner.query(`ALTER TABLE "contacts" ADD COLUMN IF NOT EXISTS "lastName" varchar`);
+		await queryRunner.query(`UPDATE "contacts" SET "firstName" = SPLIT_PART("name", ' ', 1), "lastName" = NULLIF(TRIM(SUBSTRING("name" FROM POSITION(' ' IN "name") + 1)), '')`);
+		await queryRunner.query(`UPDATE "contacts" SET "firstName" = 'Unknown' WHERE "firstName" IS NULL OR "firstName" = ''`);
+		await queryRunner.query(`ALTER TABLE "contacts" ALTER COLUMN "firstName" SET NOT NULL`);
+		await queryRunner.query(`ALTER TABLE "contacts" ALTER COLUMN "lastName" SET NOT NULL`);
+		await queryRunner.query(`ALTER TABLE "contacts" DROP COLUMN IF EXISTS "name"`);
 
 		// Companies
 		await queryRunner.query(`DROP INDEX IF EXISTS "IDX_companies_status"`);
