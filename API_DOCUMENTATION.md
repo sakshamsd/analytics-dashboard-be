@@ -1,4 +1,4 @@
-# CRM Backend — API Documentation
+# CRM Backend – API Documentation
 
 **Base URL:** `http://localhost:4000` (development) or your deployed URL
 **API Version:** v1
@@ -32,9 +32,9 @@ All CRM endpoints (except `/health`) require these headers:
 
 | Header | Type | Required | Description |
 |--------|------|----------|-------------|
-| `x-workspace-id` | UUID string | ✅ Yes | Tenant/workspace identifier |
-| `x-user-id` | UUID string | ✅ Yes | Currently acting user identifier |
-| `Content-Type` | string | ✅ Yes (on POST/PATCH) | `application/json` |
+| `x-workspace-id` | UUID string | Yes | Tenant/workspace identifier |
+| `x-user-id` | UUID string | Yes | Currently acting user identifier |
+| `Content-Type` | string | Yes (on POST/PATCH) | `application/json` |
 
 ```
 x-workspace-id: 550e8400-e29b-41d4-a716-446655440000
@@ -51,10 +51,20 @@ Content-Type: application/json
 {
   "id": "uuid",
   "name": "Acme Corp",
+  "ownerId": "uuid",
+  "owner": { "id": "uuid", "fullName": "Jane Smith" },
+  "assignedTo": "uuid",
+  "assignedUser": { "id": "uuid", "fullName": "John Doe" },
+  "createdBy": "uuid",
+  "createdByUser": { "id": "uuid", "fullName": "Jane Smith" },
+  "updatedBy": "uuid",
+  "updatedByUser": { "id": "uuid", "fullName": "Jane Smith" },
   "createdAt": "2024-01-15T10:30:00.000Z",
   "updatedAt": "2024-01-15T10:30:00.000Z"
 }
 ```
+
+> **User enrichment:** All CRM responses automatically include resolved user objects alongside the raw UUID fields. Each UUID field (`ownerId`, `assignedTo`, `createdBy`, `updatedBy`) is accompanied by a corresponding object (`owner`, `assignedUser`, `createdByUser`, `updatedByUser`) containing `{ id, fullName }`. This allows frontend tables to display names directly without additional lookups.
 
 ### Paginated List
 ```json
@@ -90,7 +100,7 @@ All list endpoints support the following query parameters:
 |-----------|------|---------|-------------|
 | `page` | integer | 1 | Page number (1-indexed) |
 | `limit` | integer | 10 | Records per page (max: 100) |
-| `search` | string | — | Text search across key fields |
+| `search` | string | – | Text search across key fields |
 | `sortBy` | string | `createdAt` | Field to sort by (see per-entity allowed fields) |
 | `sortOrder` | `ASC` \| `DESC` | `DESC` | Sort direction |
 
@@ -165,31 +175,31 @@ List all companies in workspace with pagination, search, and filtering.
 #### `POST /api/v1/companies`
 Create a new company.
 
-**Request Body:**
+**Request Body** (required fields first):
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `name` | string | ✅ | Company name |
-| `email` | string (email) | ✅ | Company email address |
-| `phone` | string | ✅ | Phone number |
-| `website` | string (URL) | ✅ | Company website URL |
-| `industry` | enum | ✅ | See [Industry enum](#industry) |
-| `country` | string | ✅ | Country name |
-| `state` | string | ✅ | State/Province |
-| `city` | string | ✅ | City |
-| `address` | string | ✅ | Street address |
-| `postcode` | string | ✅ | Postal code (max 20 chars) |
-| `leadSource` | enum | ✅ | See [LeadSource enum](#leadsource) |
-| `companySize` | enum | ❌ | See [CompanySize enum](#companysize) |
-| `numberOfEmployees` | integer | ❌ | Actual employee headcount |
-| `annualRevenue` | integer | ❌ | Annual revenue in cents |
-| `linkedinUrl` | string (URL) | ❌ | LinkedIn company page URL |
-| `timezone` | string | ❌ | IANA timezone (e.g. `Australia/Sydney`) |
-| `status` | enum | ❌ | Default: `prospect`. See [CompanyStatus enum](#companystatus) |
-| `description` | string | ❌ | Free-text description |
-| `ownerId` | UUID | ❌ | Assign an owner user ID |
+| `name` | string | Yes | Company name |
+| `email` | string (email) | Yes | Company email address |
+| `phone` | string | Yes | Phone number (max 30 chars) |
+| `website` | string (URL) | Yes | Company website URL |
+| `industry` | enum | Yes | See [Industry enum](#industry) |
+| `country` | string | Yes | Country name |
+| `state` | string | Yes | State/Province |
+| `city` | string | Yes | City |
+| `address` | string | Yes | Street address |
+| `postalCode` | string | Yes | Postal code (max 20 chars) |
+| `leadSource` | enum | Yes | See [LeadSource enum](#leadsource) |
+| `status` | enum | No | Default: `prospect`. See [CompanyStatus enum](#companystatus) |
+| `companySize` | enum | No | See [CompanySize enum](#companysize) |
+| `numberOfEmployees` | integer | No | Actual employee headcount |
+| `annualRevenue` | integer | No | Annual revenue in cents |
+| `linkedinUrl` | string (URL) | No | LinkedIn company page URL |
+| `timezone` | string | No | IANA timezone (e.g. `Australia/Sydney`) |
+| `description` | string | No | Free-text description |
+| `ownerId` | UUID | No | Assign an owner user ID |
 
-**Response:** `201 Created` — the created Company object.
+**Response:** `201 Created` – the created Company object.
 
 ---
 
@@ -201,7 +211,7 @@ Get a single company by ID.
 ---
 
 #### `PATCH /api/v1/companies/:id`
-Update a company (partial update — only send fields to change).
+Update a company (partial update – only send fields to change).
 
 **Request Body:** Same fields as `POST`, all optional.
 
@@ -267,13 +277,13 @@ List all contacts in workspace.
 |-----------|------|-------------|
 | `page` | integer | Page number |
 | `limit` | integer | Items per page |
-| `search` | string | Search firstName, lastName, email, mobile, jobTitle |
+| `search` | string | Search name, email, mobile, jobTitle |
 | `status` | string | Filter: `active`, `inactive`, `bounced`, `unsubscribed` |
 | `companyId` | UUID | Filter contacts by company |
 | `assignedTo` | UUID | Filter by assigned user |
 | `ownerId` | UUID | Filter by owner |
 | `doNotContact` | boolean | `true` or `false` |
-| `sortBy` | string | `createdAt`, `firstName`, `lastName`, `email`, `status`, `lastActivityAt` |
+| `sortBy` | string | `createdAt`, `name`, `email`, `status`, `lastActivityAt` |
 | `sortOrder` | string | `ASC` or `DESC` |
 
 **Response:** Paginated list of Contact objects (includes nested `company` object).
@@ -283,27 +293,26 @@ List all contacts in workspace.
 #### `POST /api/v1/contacts`
 Create a new contact.
 
-**Request Body:**
+**Request Body** (required fields first):
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `companyId` | UUID | ✅ | Company this contact belongs to |
-| `firstName` | string | ✅ | First name |
-| `lastName` | string | ✅ | Last name |
-| `email` | string (email) | ✅ | Email address |
-| `assignedTo` | UUID | ✅ | User ID this contact is assigned to |
-| `phone` | string | ❌ | Office/work phone |
-| `mobile` | string | ❌ | Mobile number |
-| `jobTitle` | string | ❌ | Job title |
-| `department` | string | ❌ | Department within company (max 120 chars) |
-| `linkedinUrl` | string (URL) | ❌ | LinkedIn profile URL |
-| `isPrimary` | boolean | ❌ | Is primary contact for company. Default: `false` |
-| `status` | enum | ❌ | Default: `active`. See [ContactStatus enum](#contactstatus) |
-| `leadSource` | enum | ❌ | How this contact was acquired. See [LeadSource enum](#leadsource) |
-| `preferredContactMethod` | enum | ❌ | `email`, `phone`, or `mobile` |
-| `doNotContact` | boolean | ❌ | DNC flag. Default: `false` |
+| `name` | string | Yes | Full name |
+| `email` | string (email) | Yes | Email address |
+| `companyId` | UUID | Yes | Company this contact belongs to |
+| `assignedTo` | UUID | Yes | User ID this contact is assigned to |
+| `phone` | string | No | Office/work phone (max 30 chars) |
+| `mobile` | string | No | Mobile number (max 30 chars) |
+| `jobTitle` | string | No | Job title |
+| `department` | string | No | Department within company (max 120 chars) |
+| `linkedinUrl` | string (URL) | No | LinkedIn profile URL |
+| `status` | enum | No | Default: `active`. See [ContactStatus enum](#contactstatus) |
+| `leadSource` | enum | No | How this contact was acquired. See [LeadSource enum](#leadsource) |
+| `preferredContactMethod` | enum | No | `email`, `phone`, or `mobile` |
+| `isPrimary` | boolean | No | Is primary contact for company. Default: `false` |
+| `doNotContact` | boolean | No | DNC flag. Default: `false` |
 
-**Response:** `201 Created` — the created Contact object.
+**Response:** `201 Created` – the created Contact object.
 
 ---
 
@@ -376,27 +385,27 @@ List all deals in workspace.
 #### `POST /api/v1/deals`
 Create a new deal.
 
-**Request Body:**
+**Request Body** (required fields first):
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `title` | string | ✅ | Deal title (max 200 chars) |
-| `dealValue` | integer | ✅ | Deal value in smallest currency unit (e.g. cents). Must be ≥ 0 |
-| `stage` | enum | ✅ | See [DealStage enum](#dealstage) |
-| `priority` | enum | ✅ | See [DealPriority enum](#dealpriority) |
-| `companyId` | UUID | ✅ | Company associated with the deal |
-| `assignedTo` | UUID | ✅ | User this deal is assigned to |
-| `contactId` | UUID | ❌ | Contact associated (must belong to `companyId`) |
-| `currency` | string | ❌ | 3-letter ISO currency code. Default: `AUD` |
-| `status` | enum | ❌ | Default: `OPEN`. See [DealStatus enum](#dealstatus) |
-| `lostReason` | enum | ❌* | **Required when `status` is `LOST`**. See [DealLostReason enum](#deallostreason) |
-| `probability` | integer | ❌ | Win probability 0–100 |
-| `expectedCloseDate` | date (YYYY-MM-DD) | ❌ | Expected close date |
-| `actualCloseDate` | date (YYYY-MM-DD) | ❌ | Actual close date |
-| `source` | enum | ❌ | How deal originated. See [LeadSource enum](#leadsource) |
-| `description` | string | ❌ | Free-text notes |
+| `title` | string | Yes | Deal title (max 200 chars) |
+| `dealValue` | integer | Yes | Deal value in smallest currency unit (e.g. cents). Must be >= 0 |
+| `stage` | enum | Yes | See [DealStage enum](#dealstage) |
+| `priority` | enum | Yes | See [DealPriority enum](#dealpriority) |
+| `companyId` | UUID | Yes | Company associated with the deal |
+| `assignedTo` | UUID | Yes | User this deal is assigned to |
+| `currency` | string | No | 3-letter ISO currency code. Default: `AUD` |
+| `status` | enum | No | Default: `OPEN`. See [DealStatus enum](#dealstatus) |
+| `contactId` | UUID | No | Contact associated (must belong to `companyId`) |
+| `probability` | integer | No | Win probability 0-100 |
+| `expectedCloseDate` | date (YYYY-MM-DD) | No | Expected close date |
+| `actualCloseDate` | date (YYYY-MM-DD) | No | Actual close date |
+| `lostReason` | enum | No* | **Required when `status` is `LOST`**. See [DealLostReason enum](#deallostreason) |
+| `source` | enum | No | How deal originated. See [LeadSource enum](#leadsource) |
+| `description` | string | No | Free-text notes |
 
-**Response:** `201 Created` — the created Deal object.
+**Response:** `201 Created` – the created Deal object.
 
 ---
 
@@ -464,27 +473,27 @@ List all activities in workspace.
 #### `POST /api/v1/activities`
 Create a new activity.
 
-**Request Body:**
+**Request Body** (required fields first):
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `type` | enum | ✅ | See [ActivityType enum](#activitytype) |
-| `priority` | enum | ✅ | See [ActivityPriority enum](#activitypriority) |
-| `subject` | string | ✅ | Activity subject/title (max 200 chars) |
-| `dueDate` | string (YYYY-MM-DD) | ✅ | Due date |
-| `dueTime` | string (HH:MM) | ✅ | Due time in HH:MM or HH:MM:SS |
-| `contactId` | UUID | ✅ | Contact this activity is linked to |
-| `assignedTo` | UUID | ✅ | User this activity is assigned to |
-| `body` | string | ❌ | Activity notes/body |
-| `status` | enum | ❌ | Default: `OPEN`. See [ActivityStatus enum](#activitystatus) |
-| `outcome` | enum | ❌ | Result of the activity. See [ActivityOutcome enum](#activityoutcome) |
-| `location` | string | ❌ | Location (for meetings). Max 300 chars |
-| `duration` | integer | ❌ | Duration in minutes |
-| `reminderAt` | ISO datetime | ❌ | When to send a reminder (e.g. `2024-06-01T09:00:00Z`) |
-| `dealId` | UUID | ❌ | Link to a deal |
-| `companyId` | UUID | ❌ | Link to a company |
+| `type` | enum | Yes | See [ActivityType enum](#activitytype) |
+| `subject` | string | Yes | Activity subject/title (max 200 chars) |
+| `priority` | enum | Yes | See [ActivityPriority enum](#activitypriority) |
+| `dueDate` | string (YYYY-MM-DD) | Yes | Due date |
+| `dueTime` | string (HH:MM) | Yes | Due time in HH:MM or HH:MM:SS |
+| `contactId` | UUID | Yes | Contact this activity is linked to |
+| `assignedTo` | UUID | Yes | User this activity is assigned to |
+| `body` | string | No | Activity notes/body |
+| `status` | enum | No | Default: `OPEN`. See [ActivityStatus enum](#activitystatus) |
+| `outcome` | enum | No | Result of the activity. See [ActivityOutcome enum](#activityoutcome) |
+| `reminderAt` | ISO datetime | No | When to send a reminder (e.g. `2024-06-01T09:00:00Z`) |
+| `location` | string | No | Location (for meetings). Max 300 chars |
+| `duration` | integer | No | Duration in minutes |
+| `dealId` | UUID | No | Link to a deal |
+| `companyId` | UUID | No | Link to a company |
 
-**Response:** `201 Created` — the created Activity object. Also updates `lastActivityAt` on the linked contact.
+**Response:** `201 Created` – the created Activity object. Also updates `lastActivityAt` on the linked contact.
 
 ---
 
@@ -576,12 +585,12 @@ Invite/create a user.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `fullName` | string | ✅ | Full name (min 2 chars) |
-| `email` | string (email) | ❌ | Email address |
-| `avatarUrl` | string (URL) | ❌ | Avatar image URL |
-| `role` | enum | ❌ | `OWNER`, `ADMIN`, `MEMBER`. Default: `MEMBER` |
-| `externalAuthProvider` | string | ❌ | Auth provider identifier |
-| `externalAuthId` | string | ❌ | External auth subject ID |
+| `fullName` | string | Yes | Full name (min 2 chars) |
+| `email` | string (email) | No | Email address |
+| `avatarUrl` | string (URL) | No | Avatar image URL |
+| `role` | enum | No | `OWNER`, `ADMIN`, `MEMBER`. Default: `MEMBER` |
+| `externalAuthProvider` | string | No | Auth provider identifier |
+| `externalAuthId` | string | No | External auth subject ID |
 
 #### `GET /api/v1/users/:id`
 Get a single user.
@@ -635,27 +644,32 @@ Update dashboard configuration.
 | `id` | UUID | No | Primary key |
 | `name` | string | No | Company name |
 | `email` | string | No | Company email |
-| `phone` | string | No | Phone number |
+| `phone` | string (max 30) | No | Phone number |
 | `website` | string (URL) | No | Website URL |
 | `industry` | enum | No | Industry type |
+| `country` | string | No | Country |
+| `state` | string | No | State/Province |
+| `city` | string | No | City |
+| `address` | string | No | Street address |
+| `postalCode` | string | No | Postal code (max 20 chars) |
+| `leadSource` | enum | No | How company was acquired |
+| `status` | enum | No | Default: `prospect` |
 | `companySize` | enum | Yes | Employee size band |
 | `numberOfEmployees` | integer | Yes | Actual employee count |
 | `annualRevenue` | integer | Yes | Annual revenue (cents) |
 | `linkedinUrl` | string | Yes | LinkedIn company URL |
 | `timezone` | string | Yes | IANA timezone |
-| `country` | string | No | Country |
-| `state` | string | No | State/Province |
-| `city` | string | No | City |
-| `address` | string | No | Street address |
-| `postcode` | string | No | Postal code |
-| `leadSource` | enum | No | How company was acquired |
-| `status` | enum | No | Default: `prospect` |
 | `description` | string | Yes | Notes |
 | `lastActivityAt` | datetime | Yes | Auto-updated on new activity |
+| `lastActivityAt` | datetime | Yes | Auto-updated on new activity |
 | `workspaceId` | UUID | No | Workspace |
-| `ownerId` | UUID | Yes | Owner user |
-| `createdBy` | UUID | Yes | Creator user |
-| `updatedBy` | UUID | Yes | Last updater |
+| `ownerId` | UUID | Yes | Owner user ID |
+| `owner` | object | Yes | `{ id, fullName }` — resolved owner |
+| `createdBy` | UUID | Yes | Creator user ID |
+| `createdByUser` | object | Yes | `{ id, fullName }` — resolved creator |
+| `updatedBy` | UUID | Yes | Last updater user ID |
+| `updatedByUser` | object | Yes | `{ id, fullName }` — resolved last updater |
+| `deletedBy` | UUID | Yes | Deleter |
 | `createdAt` | datetime | No | Creation timestamp |
 | `updatedAt` | datetime | No | Last update timestamp |
 | `deletedAt` | datetime | Yes | Soft delete timestamp |
@@ -667,26 +681,31 @@ Update dashboard configuration.
 | Field | Type | Nullable | Description |
 |-------|------|----------|-------------|
 | `id` | UUID | No | Primary key |
-| `companyId` | UUID | No | Parent company |
-| `firstName` | string | No | First name |
-| `lastName` | string | No | Last name |
+| `name` | string | No | Full name |
 | `email` | string | No | Email address |
-| `phone` | string | Yes | Office phone |
-| `mobile` | string | Yes | Mobile number |
+| `phone` | string (max 30) | Yes | Office phone |
+| `mobile` | string (max 30) | Yes | Mobile number |
 | `jobTitle` | string | Yes | Job title |
 | `department` | string | Yes | Department (max 120 chars) |
 | `linkedinUrl` | string | Yes | LinkedIn profile URL |
-| `isPrimary` | boolean | No | Primary contact flag. Default: `false` |
 | `status` | enum | No | Default: `active` |
 | `leadSource` | enum | Yes | Acquisition source |
 | `preferredContactMethod` | enum | Yes | `email`, `phone`, or `mobile` |
+| `isPrimary` | boolean | No | Primary contact flag. Default: `false` |
 | `doNotContact` | boolean | No | DNC flag. Default: `false` |
+| `companyId` | UUID | No | Parent company |
+| `company` | object | Yes | Nested company object |
+| `assignedTo` | UUID | No | Assigned user ID |
+| `assignedUser` | object | Yes | `{ id, fullName }` — resolved assigned user |
+| `ownerId` | UUID | Yes | Owner user ID |
+| `owner` | object | Yes | `{ id, fullName }` — resolved owner |
 | `lastActivityAt` | datetime | Yes | Auto-updated on new activity |
 | `workspaceId` | UUID | No | Workspace |
-| `ownerId` | UUID | Yes | Owner user |
-| `assignedTo` | UUID | No | Assigned user |
-| `createdBy` | UUID | Yes | Creator |
-| `updatedBy` | UUID | Yes | Last updater |
+| `createdBy` | UUID | Yes | Creator user ID |
+| `createdByUser` | object | Yes | `{ id, fullName }` — resolved creator |
+| `updatedBy` | UUID | Yes | Last updater user ID |
+| `updatedByUser` | object | Yes | `{ id, fullName }` — resolved last updater |
+| `deletedBy` | UUID | Yes | Deleter |
 | `createdAt` | datetime | No | Creation timestamp |
 | `updatedAt` | datetime | No | Last update timestamp |
 | `deletedAt` | datetime | Yes | Soft delete timestamp |
@@ -704,19 +723,24 @@ Update dashboard configuration.
 | `status` | enum | No | Default: `OPEN` |
 | `stage` | enum | No | Pipeline stage |
 | `priority` | enum | No | Priority level |
-| `lostReason` | enum | Yes | Required if `status = LOST` |
-| `probability` | integer | Yes | Win probability 0–100 |
+| `probability` | integer | Yes | Win probability 0-100 |
 | `expectedCloseDate` | date | Yes | Expected close (YYYY-MM-DD) |
 | `actualCloseDate` | date | Yes | Actual close date |
+| `lostReason` | enum | Yes | Required if `status = LOST` |
 | `source` | enum | Yes | Deal origin source |
 | `description` | string | Yes | Notes |
 | `companyId` | UUID | No | Associated company |
 | `contactId` | UUID | Yes | Associated contact |
+| `assignedTo` | UUID | No | Assigned user ID |
+| `assignedUser` | object | Yes | `{ id, fullName }` — resolved assigned user |
+| `ownerId` | UUID | Yes | Owner user ID |
+| `owner` | object | Yes | `{ id, fullName }` — resolved owner |
 | `workspaceId` | UUID | No | Workspace |
-| `ownerId` | UUID | Yes | Owner user |
-| `assignedTo` | UUID | No | Assigned user |
-| `createdBy` | UUID | Yes | Creator |
-| `updatedBy` | UUID | Yes | Last updater |
+| `createdBy` | UUID | Yes | Creator user ID |
+| `createdByUser` | object | Yes | `{ id, fullName }` — resolved creator |
+| `updatedBy` | UUID | Yes | Last updater user ID |
+| `updatedByUser` | object | Yes | `{ id, fullName }` — resolved last updater |
+| `deletedBy` | UUID | Yes | Deleter |
 | `createdAt` | datetime | No | Creation timestamp |
 | `updatedAt` | datetime | No | Last update timestamp |
 | `deletedAt` | datetime | Yes | Soft delete timestamp |
@@ -729,24 +753,29 @@ Update dashboard configuration.
 |-------|------|----------|-------------|
 | `id` | UUID | No | Primary key |
 | `type` | enum | No | Activity type |
-| `priority` | enum | No | Priority level |
-| `status` | enum | No | Default: `OPEN` |
 | `subject` | string | No | Subject/title (max 200 chars) |
 | `body` | string | Yes | Notes/description |
+| `priority` | enum | No | Priority level |
+| `status` | enum | No | Default: `OPEN` |
 | `outcome` | enum | Yes | Result of the activity |
-| `location` | string | Yes | Meeting location (max 300 chars) |
-| `duration` | integer | Yes | Duration in minutes |
-| `reminderAt` | datetime | Yes | Reminder timestamp |
 | `dueDate` | date | No | Due date (YYYY-MM-DD) |
 | `dueTime` | time | No | Due time (HH:MM) |
+| `reminderAt` | datetime | Yes | Reminder timestamp |
+| `location` | string | Yes | Meeting location (max 300 chars) |
+| `duration` | integer | Yes | Duration in minutes |
 | `contactId` | UUID | No | Linked contact |
 | `dealId` | UUID | Yes | Linked deal |
 | `companyId` | UUID | Yes | Linked company |
+| `assignedTo` | UUID | No | Assigned user ID |
+| `assignedUser` | object | Yes | `{ id, fullName }` — resolved assigned user |
+| `ownerId` | UUID | Yes | Owner user ID |
+| `owner` | object | Yes | `{ id, fullName }` — resolved owner |
 | `workspaceId` | UUID | No | Workspace |
-| `ownerId` | UUID | Yes | Owner user |
-| `assignedTo` | UUID | No | Assigned user |
-| `createdBy` | UUID | Yes | Creator |
-| `updatedBy` | UUID | Yes | Last updater |
+| `createdBy` | UUID | Yes | Creator user ID |
+| `createdByUser` | object | Yes | `{ id, fullName }` — resolved creator |
+| `updatedBy` | UUID | Yes | Last updater user ID |
+| `updatedByUser` | object | Yes | `{ id, fullName }` — resolved last updater |
+| `deletedBy` | UUID | Yes | Deleter |
 | `createdAt` | datetime | No | Creation timestamp |
 | `updatedAt` | datetime | No | Last update timestamp |
 | `deletedAt` | datetime | Yes | Soft delete timestamp |
@@ -802,7 +831,7 @@ Update dashboard configuration.
 
 ---
 
-## Quick Reference — All Endpoints
+## Quick Reference – All Endpoints
 
 ```
 GET    /health

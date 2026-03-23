@@ -5,10 +5,19 @@ import { User } from "../entities/User.js";
 import { AppError } from "../errors/AppError.js";
 import { IsNull } from "typeorm";
 import type { CreateContactInput, UpdateContactInput } from "../validation/contact.schema.js";
+import { enrichWithUsers, enrichOneWithUsers, type UserFieldMapping } from "../utils/enrichUsers.js";
 
 const contactRepo = AppDataSource.getRepository(Contact);
 const companyRepo = AppDataSource.getRepository(Company);
 const userRepo = AppDataSource.getRepository(User);
+
+// Fields to resolve from UUID → { id, fullName } object in every response
+const USER_FIELDS: UserFieldMapping[] = [
+	{ idField: "assignedTo", outputKey: "assignedUser" },
+	{ idField: "ownerId",    outputKey: "owner" },
+	{ idField: "createdBy",  outputKey: "createdByUser" },
+	{ idField: "updatedBy",  outputKey: "updatedByUser" },
+];
 
 export interface ListContactsParams {
 	page?: number | undefined;
@@ -48,7 +57,7 @@ const ALLOWED_SORT_FIELDS: Record<string, string> = {
 export async function listContacts(
 	workspaceId: string,
 	params: ListContactsParams = {}
-): Promise<PaginatedResult<Contact>> {
+): Promise<PaginatedResult<any>> {
 	const page = Math.max(1, params.page || 1);
 	const limit = Math.min(100, Math.max(1, params.limit || 10));
 	const skip = (page - 1) * limit;
@@ -96,8 +105,10 @@ export async function listContacts(
 		.take(limit)
 		.getManyAndCount();
 
+	const enrichedData = await enrichWithUsers(data, USER_FIELDS);
+
 	return {
-		data,
+		data: enrichedData,
 		pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
 	};
 }
@@ -112,17 +123,18 @@ export async function getContactById(workspaceId: string, id: string) {
 	});
 
 	if (!contact) throw new AppError("Contact not found", 404);
-	return contact;
+	return enrichOneWithUsers(contact, USER_FIELDS);
 }
 
 /**
  * Get contacts by company id (workspace scoped)
  */
 export async function getContactsByCompanyId(workspaceId: string, companyId: string) {
-	return contactRepo.find({
+	const contacts = await contactRepo.find({
 		where: { workspaceId, companyId, deletedAt: IsNull() },
 		order: { createdAt: "DESC" },
 	});
+	return enrichWithUsers(contacts, USER_FIELDS);
 }
 
 /**
@@ -164,7 +176,8 @@ export async function createContact(
 		assignedTo: input.assignedTo,
 	} as any);
 
-	return contactRepo.save(contact);
+	const saved = await contactRepo.save(contact);
+	return enrichOneWithUsers(saved, USER_FIELDS);
 }
 
 /**
@@ -214,7 +227,8 @@ export async function updateContact(
 
 	contact.updatedBy = userId;
 
-	return contactRepo.save(contact);
+	const saved = await contactRepo.save(contact);
+	return enrichOneWithUsers(saved, USER_FIELDS);
 }
 
 /**
@@ -250,7 +264,8 @@ export async function restoreContact(workspaceId: string, userId: string, id: st
 	contact.deletedBy = null;
 	contact.updatedBy = userId;
 
-	return contactRepo.save(contact);
+	const saved = await contactRepo.save(contact);
+	return enrichOneWithUsers(saved, USER_FIELDS);
 }
 
 /**

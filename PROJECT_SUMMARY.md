@@ -246,7 +246,7 @@ Request → Controller → Service → Database
 ### MongoDB Collections (1)
 1. **dashboard_configs** - User dashboard customization
 
-**Migrations:** 6 migration files in [src/migrations/](src/migrations/)
+**Migrations:** 9 migration files in [src/migrations/](src/migrations/)
 
 See [README.md](./README.md) for detailed schema.
 
@@ -271,7 +271,7 @@ curl -X POST http://localhost:4000/api/v1/companies \
     "state": "California",
     "city": "San Francisco",
     "address": "123 Tech Lane",
-    "postcode": "94105",
+    "postalCode": "94105",
     "leadSource": "website"
   }'
 ```
@@ -289,7 +289,7 @@ curl -X POST http://localhost:4000/api/v1/companies \
   "state": "California",
   "city": "San Francisco",
   "address": "123 Tech Lane",
-  "postcode": "94105",
+  "postalCode": "94105",
   "leadSource": "website",
   "companySize": null,
   "workspaceId": "workspace-uuid",

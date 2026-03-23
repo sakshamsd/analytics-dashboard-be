@@ -28,19 +28,7 @@ export class Contact {
 	@PrimaryGeneratedColumn("uuid")
 	id!: string;
 
-	@Index()
-	@Column({ type: "uuid" })
-	workspaceId!: string;
-
-	@Index()
-	@Column({ name: "company_id", type: "uuid" })
-	companyId!: string;
-
-	@ManyToOne("Company", "contacts", {
-		onDelete: "CASCADE",
-	})
-	@JoinColumn({ name: "company_id" })
-	company!: any;
+	// ── Required fields ──────────────────────────────────────────────────────
 
 	@Column({ type: "varchar" })
 	name!: string;
@@ -48,10 +36,12 @@ export class Contact {
 	@Column({ type: "varchar" })
 	email!: string;
 
-	@Column({ type: "varchar", nullable: true })
+	// ── Contact details ───────────────────────────────────────────────────────
+
+	@Column({ type: "varchar", length: 30, nullable: true })
 	phone?: string | null;
 
-	@Column({ type: "varchar", nullable: true })
+	@Column({ type: "varchar", length: 30, nullable: true })
 	mobile?: string | null;
 
 	@Column({ type: "varchar", nullable: true })
@@ -62,6 +52,8 @@ export class Contact {
 
 	@Column({ type: "varchar", length: 500, nullable: true, name: "linkedin_url" })
 	linkedinUrl?: string | null;
+
+	// ── Status / preferences ─────────────────────────────────────────────────
 
 	@Index()
 	@Column({ type: "enum", enum: ContactStatus, default: ContactStatus.ACTIVE })
@@ -79,6 +71,20 @@ export class Contact {
 	@Column({ type: "boolean", default: false, name: "do_not_contact" })
 	doNotContact!: boolean;
 
+	// ── Relations ─────────────────────────────────────────────────────────────
+
+	@Index()
+	@Column({ name: "company_id", type: "uuid" })
+	companyId!: string;
+
+	@ManyToOne("Company", "contacts", {
+		onDelete: "CASCADE",
+	})
+	@JoinColumn({ name: "company_id" })
+	company!: any;
+
+	// ── Assignment ────────────────────────────────────────────────────────────
+
 	@Index()
 	@Column({ name: "assigned_to", type: "uuid" })
 	assignedTo!: string;
@@ -87,8 +93,16 @@ export class Contact {
 	@Column({ type: "uuid", nullable: true })
 	ownerId!: string | null;
 
+	// ── Tracking ──────────────────────────────────────────────────────────────
+
 	@Column({ type: "timestamptz", nullable: true, name: "last_activity_at" })
 	lastActivityAt?: Date | null;
+
+	// ── System / audit ────────────────────────────────────────────────────────
+
+	@Index()
+	@Column({ type: "uuid" })
+	workspaceId!: string;
 
 	@Column({ type: "uuid", nullable: true })
 	createdBy!: string | null;

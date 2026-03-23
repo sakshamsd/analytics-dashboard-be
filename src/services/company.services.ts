@@ -3,8 +3,16 @@ import { Company } from "../entities/Companies.js";
 import { AppError } from "../errors/AppError.js";
 import { IsNull } from "typeorm";
 import type { CreateCompanyInput, UpdateCompanyInput } from "../validation/company.schema.js";
+import { enrichWithUsers, enrichOneWithUsers, type UserFieldMapping } from "../utils/enrichUsers.js";
 
 const companyRepo = AppDataSource.getRepository(Company);
+
+// Fields to resolve from UUID → { id, fullName } object in every response
+const USER_FIELDS: UserFieldMapping[] = [
+	{ idField: "ownerId",    outputKey: "owner" },
+	{ idField: "createdBy",  outputKey: "createdByUser" },
+	{ idField: "updatedBy",  outputKey: "updatedByUser" },
+];
 
 export interface ListCompaniesParams {
 	page?: number | undefined;
@@ -42,7 +50,7 @@ const ALLOWED_SORT_FIELDS: Record<string, string> = {
 export async function listCompanies(
 	workspaceId: string,
 	params: ListCompaniesParams = {}
-): Promise<PaginatedResult<Company>> {
+): Promise<PaginatedResult<any>> {
 	const page = Math.max(1, params.page || 1);
 	const limit = Math.min(100, Math.max(1, params.limit || 10));
 	const skip = (page - 1) * limit;
@@ -82,8 +90,10 @@ export async function listCompanies(
 		.take(limit)
 		.getManyAndCount();
 
+	const enrichedData = await enrichWithUsers(data, USER_FIELDS);
+
 	return {
-		data,
+		data: enrichedData,
 		pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
 	};
 }
@@ -97,7 +107,7 @@ export async function getCompanyById(workspaceId: string, id: string) {
 	});
 
 	if (!company) throw new AppError("Company not found", 404);
-	return company;
+	return enrichOneWithUsers(company, USER_FIELDS);
 }
 
 /**
@@ -122,7 +132,7 @@ export async function createCompany(
 		state: input.state,
 		city: input.city,
 		address: input.address,
-		postcode: input.postcode,
+		postalCode: input.postalCode,
 		leadSource: input.leadSource,
 	};
 
@@ -136,7 +146,8 @@ export async function createCompany(
 	if (input.ownerId !== undefined) companyData.ownerId = input.ownerId;
 
 	const company = companyRepo.create(companyData);
-	return companyRepo.save(company);
+	const saved = await companyRepo.save(company);
+	return enrichOneWithUsers(saved, USER_FIELDS);
 }
 
 /**
@@ -157,7 +168,8 @@ export async function updateCompany(
 	Object.assign(company, input);
 	company.updatedBy = userId;
 
-	return companyRepo.save(company);
+	const saved = await companyRepo.save(company);
+	return enrichOneWithUsers(saved, USER_FIELDS);
 }
 
 /**
@@ -193,7 +205,8 @@ export async function restoreCompany(workspaceId: string, userId: string, id: st
 	company.deletedBy = null;
 	company.updatedBy = userId;
 
-	return companyRepo.save(company);
+	const saved = await companyRepo.save(company);
+	return enrichOneWithUsers(saved, USER_FIELDS);
 }
 
 /**

@@ -49,9 +49,7 @@ export class Deals {
 	@PrimaryGeneratedColumn("uuid")
 	id!: string;
 
-	@Index()
-	@Column({ type: "uuid" })
-	workspaceId!: string;
+	// ── Required fields ──────────────────────────────────────────────────────
 
 	@Index()
 	@Column({ type: "varchar", length: 200 })
@@ -75,6 +73,11 @@ export class Deals {
 	@Column({ type: "enum", enum: DealPriority })
 	priority!: DealPriority;
 
+	// ── Optional fields ───────────────────────────────────────────────────────
+
+	@Column({ type: "int", nullable: true })
+	probability?: number | null;
+
 	@Column({ type: "date", nullable: true, name: "expected_close_date" })
 	expectedCloseDate!: string | null;
 
@@ -90,12 +93,7 @@ export class Deals {
 	@Column({ type: "text", nullable: true })
 	description?: string | null;
 
-	@Column({ type: "int", nullable: true })
-	probability?: number | null;
-
-	@Index()
-	@Column({ type: "uuid", nullable: true })
-	ownerId!: string | null;
+	// ── Relations ─────────────────────────────────────────────────────────────
 
 	@Index()
 	@Column({ name: "company_id", type: "uuid" })
@@ -113,15 +111,21 @@ export class Deals {
 	@JoinColumn({ name: "contact_id" })
 	contact!: Contact | null;
 
+	// ── Assignment ────────────────────────────────────────────────────────────
+
 	@Index()
 	@Column({ name: "assigned_to", type: "uuid" })
 	assignedTo!: string;
 
-	@CreateDateColumn()
-	createdAt!: Date;
+	@Index()
+	@Column({ type: "uuid", nullable: true })
+	ownerId!: string | null;
 
-	@UpdateDateColumn()
-	updatedAt!: Date;
+	// ── System / audit ────────────────────────────────────────────────────────
+
+	@Index()
+	@Column({ type: "uuid" })
+	workspaceId!: string;
 
 	@Index()
 	@Column({ type: "uuid", nullable: true })
@@ -130,9 +134,15 @@ export class Deals {
 	@Column({ type: "uuid", nullable: true })
 	updatedBy!: string | null;
 
-	@Column({ type: "timestamp", nullable: true })
-	deletedAt!: Date | null;
-
 	@Column({ type: "uuid", nullable: true })
 	deletedBy!: string | null;
+
+	@CreateDateColumn()
+	createdAt!: Date;
+
+	@UpdateDateColumn()
+	updatedAt!: Date;
+
+	@Column({ type: "timestamp", nullable: true })
+	deletedAt!: Date | null;
 }

@@ -21,7 +21,7 @@ export const createCompanySchema = z.object({
 	state: z.string().min(1, "State is required"),
 	city: z.string().min(1, "City is required"),
 	address: z.string().min(1, "Address is required"),
-	postcode: z.string().min(1).max(20, "Postcode is required"),
+	postalCode: z.string().min(1).max(20, "Postal code is required"),
 	leadSource: leadSourceEnum,
 	status: companyStatusEnum.optional(),
 	ownerId: z.string().uuid().optional(),

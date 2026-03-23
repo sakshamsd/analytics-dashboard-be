@@ -44,13 +44,17 @@ export class Activities {
 	@PrimaryGeneratedColumn("uuid")
 	id!: string;
 
-	@Index()
-	@Column({ type: "uuid" })
-	workspaceId!: string;
+	// ── Required fields ──────────────────────────────────────────────────────
 
 	@Index()
 	@Column({ type: "enum", enum: ActivityType })
 	type!: ActivityType;
+
+	@Column({ type: "varchar", length: 200 })
+	subject!: string;
+
+	@Column({ type: "text", nullable: true })
+	body!: string | null;
 
 	@Index()
 	@Column({ type: "enum", enum: ActivityPriority })
@@ -60,23 +64,12 @@ export class Activities {
 	@Column({ type: "enum", enum: ActivityStatus, default: ActivityStatus.OPEN })
 	status!: ActivityStatus;
 
-	@Column({ type: "varchar", length: 200 })
-	subject!: string;
-
-	@Column({ type: "text", nullable: true })
-	body!: string | null;
+	// ── Optional fields ───────────────────────────────────────────────────────
 
 	@Column({ type: "enum", enum: ActivityOutcome, nullable: true })
 	outcome?: ActivityOutcome | null;
 
-	@Column({ type: "varchar", length: 300, nullable: true })
-	location?: string | null;
-
-	@Column({ type: "int", nullable: true })
-	duration?: number | null;
-
-	@Column({ type: "timestamptz", nullable: true, name: "reminder_at" })
-	reminderAt?: Date | null;
+	// ── Scheduling ────────────────────────────────────────────────────────────
 
 	@Index()
 	@Column({ name: "due_date", type: "date" })
@@ -85,9 +78,16 @@ export class Activities {
 	@Column({ name: "due_time", type: "time" })
 	dueTime!: string;
 
-	@Index()
-	@Column({ type: "uuid", nullable: true })
-	ownerId!: string | null;
+	@Column({ type: "timestamptz", nullable: true, name: "reminder_at" })
+	reminderAt?: Date | null;
+
+	@Column({ type: "varchar", length: 300, nullable: true })
+	location?: string | null;
+
+	@Column({ type: "int", nullable: true })
+	duration?: number | null;
+
+	// ── Relations ─────────────────────────────────────────────────────────────
 
 	@Index()
 	@Column({ name: "contact_id", type: "uuid" })
@@ -113,15 +113,21 @@ export class Activities {
 	@JoinColumn({ name: "company_id" })
 	company?: Company | null;
 
+	// ── Assignment ────────────────────────────────────────────────────────────
+
 	@Index()
 	@Column({ name: "assigned_to", type: "uuid" })
 	assignedTo!: string;
 
-	@CreateDateColumn()
-	createdAt!: Date;
+	@Index()
+	@Column({ type: "uuid", nullable: true })
+	ownerId!: string | null;
 
-	@UpdateDateColumn()
-	updatedAt!: Date;
+	// ── System / audit ────────────────────────────────────────────────────────
+
+	@Index()
+	@Column({ type: "uuid" })
+	workspaceId!: string;
 
 	@Column({ type: "uuid", nullable: true })
 	createdBy!: string | null;
@@ -129,9 +135,15 @@ export class Activities {
 	@Column({ type: "uuid", nullable: true })
 	updatedBy!: string | null;
 
-	@Column({ type: "timestamp", nullable: true })
-	deletedAt!: Date | null;
-
 	@Column({ type: "uuid", nullable: true })
 	deletedBy!: string | null;
+
+	@CreateDateColumn()
+	createdAt!: Date;
+
+	@UpdateDateColumn()
+	updatedAt!: Date;
+
+	@Column({ type: "timestamp", nullable: true })
+	deletedAt!: Date | null;
 }

@@ -7,12 +7,21 @@ import { User } from "../entities/User.js";
 import { AppError } from "../errors/AppError.js";
 import { IsNull } from "typeorm";
 import type { CreateActivityInput, UpdateActivityInput } from "../validation/activity.schema.js";
+import { enrichWithUsers, enrichOneWithUsers, type UserFieldMapping } from "../utils/enrichUsers.js";
 
 const activityRepo = AppDataSource.getRepository(Activities);
 const contactRepo = AppDataSource.getRepository(Contact);
 const dealRepo = AppDataSource.getRepository(Deals);
 const companyRepo = AppDataSource.getRepository(Company);
 const userRepo = AppDataSource.getRepository(User);
+
+// Fields to resolve from UUID → { id, fullName } object in every response
+const USER_FIELDS: UserFieldMapping[] = [
+	{ idField: "assignedTo", outputKey: "assignedUser" },
+	{ idField: "ownerId",    outputKey: "owner" },
+	{ idField: "createdBy",  outputKey: "createdByUser" },
+	{ idField: "updatedBy",  outputKey: "updatedByUser" },
+];
 
 export interface ListActivitiesParams {
 	page?: number | undefined;
@@ -56,7 +65,7 @@ const ALLOWED_SORT_FIELDS: Record<string, string> = {
 export async function listActivities(
 	workspaceId: string,
 	params: ListActivitiesParams = {}
-): Promise<PaginatedResult<Activities>> {
+): Promise<PaginatedResult<any>> {
 	const page = Math.max(1, params.page || 1);
 	const limit = Math.min(100, Math.max(1, params.limit || 10));
 	const skip = (page - 1) * limit;
@@ -117,8 +126,10 @@ export async function listActivities(
 		.take(limit)
 		.getManyAndCount();
 
+	const enrichedData = await enrichWithUsers(data, USER_FIELDS);
+
 	return {
-		data,
+		data: enrichedData,
 		pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
 	};
 }
@@ -133,7 +144,7 @@ export async function getActivityById(workspaceId: string, id: string) {
 	});
 
 	if (!activity) throw new AppError("Activity not found", 404);
-	return activity;
+	return enrichOneWithUsers(activity, USER_FIELDS);
 }
 
 /**
@@ -191,12 +202,13 @@ export async function createActivity(
 
 	if (input.status !== undefined) activityData.status = input.status;
 
-	// Update lastActivityAt on the contact
+	// Update lastActivityAt on the linked contact
 	contact.lastActivityAt = new Date();
 	await contactRepo.save(contact);
 
 	const activity = activityRepo.create(activityData);
-	return activityRepo.save(activity);
+	const saved = await activityRepo.save(activity);
+	return enrichOneWithUsers(saved, USER_FIELDS);
 }
 
 /**
@@ -268,7 +280,8 @@ export async function updateActivity(
 
 	activity.updatedBy = userId;
 
-	return activityRepo.save(activity);
+	const saved = await activityRepo.save(activity);
+	return enrichOneWithUsers(saved, USER_FIELDS);
 }
 
 /**
@@ -302,7 +315,8 @@ export async function restoreActivity(workspaceId: string, userId: string, id: s
 	activity.deletedBy = null;
 	activity.updatedBy = userId;
 
-	return activityRepo.save(activity);
+	const saved = await activityRepo.save(activity);
+	return enrichOneWithUsers(saved, USER_FIELDS);
 }
 
 /**

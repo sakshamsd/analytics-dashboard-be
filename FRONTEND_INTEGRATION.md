@@ -43,8 +43,8 @@ cd analytics-dashboard-be
 npm run seed
 
 # Output will show:
-# ✅ Workspace created: [ID]
-# ✅ Users created: [IDs]
+# ✓ Workspace created: [ID]
+# ✓ Users created: [IDs]
 ```
 
 Or query the database:
@@ -105,45 +105,83 @@ export const getApiHeaders = () => ({
 // Core Entities
 // ============================================
 
+/** Resolved user summary — returned alongside UUID fields in all API responses */
+export interface UserSummary {
+  id: string;
+  fullName: string;
+}
+
 export interface Company {
   id: string;
+  // Required fields
   name: string;
+  email: string;
+  phone: string;          // max 30 chars
   website: string;
   industry: Industry;
-  companySize?: CompanySize;
-  email: string;
-  phone: string;
-  address: string;
-  city: string;
-  state: string;
-  postcode: string;
   country: string;
+  state: string;
+  city: string;
+  address: string;
+  postalCode: string;     // max 20 chars
   leadSource: LeadSource;
+  status: CompanyStatus;
+  // Optional fields
+  companySize?: CompanySize;
+  numberOfEmployees?: number;
+  annualRevenue?: number;
+  linkedinUrl?: string;
+  timezone?: string;
+  description?: string;
+  lastActivityAt?: string;
+  // System / audit
   workspaceId: string;
-  ownerId: string;
-  createdBy: string;
-  updatedBy: string;
+  ownerId?: string;
+  owner?: UserSummary;            // resolved from ownerId
+  createdBy?: string;
+  createdByUser?: UserSummary;    // resolved from createdBy
+  updatedBy?: string;
+  updatedByUser?: UserSummary;    // resolved from updatedBy
+  deletedBy?: string;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string;
-  deletedBy?: string;
 }
 
 export interface Contact {
   id: string;
-  firstName: string;
-  lastName: string;
+  // Required fields
+  name: string;
   email: string;
-  phone?: string;
-  mobile: string;
+  // Contact details
+  phone?: string;         // max 30 chars
+  mobile?: string;        // max 30 chars
   jobTitle?: string;
-  isPrimary?: boolean;
-  companyId: string;         // Required - from company dropdown
+  department?: string;
+  linkedinUrl?: string;
+  // Status / preferences
+  status: ContactStatus;
+  leadSource?: LeadSource;
+  preferredContactMethod?: PreferredContactMethod;
+  isPrimary: boolean;
+  doNotContact: boolean;
+  // Relations
+  companyId: string;
   company?: Company;
-  assignedTo: string;        // Required - user UUID
-  assignedUser?: User;
+  // Assignment
+  assignedTo: string;
+  assignedUser?: UserSummary;     // resolved from assignedTo
+  ownerId?: string;
+  owner?: UserSummary;            // resolved from ownerId
+  // Tracking
+  lastActivityAt?: string;
+  // System / audit
   workspaceId: string;
-  ownerId: string;
+  createdBy?: string;
+  createdByUser?: UserSummary;    // resolved from createdBy
+  updatedBy?: string;
+  updatedByUser?: UserSummary;    // resolved from updatedBy
+  deletedBy?: string;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string;
@@ -151,24 +189,37 @@ export interface Contact {
 
 export interface Deal {
   id: string;
+  // Required fields
   title: string;
-  stage: DealStage;          // Required enum
-  dealValue: number;         // Required - integer value
+  dealValue: number;      // integer, cents
   currency: string;
   status: DealStatus;
-  priority: DealPriority;    // Required enum
+  stage: DealStage;
+  priority: DealPriority;
+  // Optional fields
   probability?: number;
   expectedCloseDate?: string;
+  actualCloseDate?: string;
+  lostReason?: DealLostReason;
+  source?: LeadSource;
   description?: string;
-  companyId: string;         // Required - from company dropdown
-  contactId: string;         // Required - contact must belong to company
-  assignedTo: string;        // Required - user UUID
-  ownerId: string;
+  // Relations
+  companyId: string;
   company?: Company;
+  contactId?: string;
   contact?: Contact;
-  owner?: User;
-  assignedUser?: User;
+  // Assignment
+  assignedTo: string;
+  assignedUser?: UserSummary;     // resolved from assignedTo
+  ownerId?: string;
+  owner?: UserSummary;            // resolved from ownerId
+  // System / audit
   workspaceId: string;
+  createdBy?: string;
+  createdByUser?: UserSummary;    // resolved from createdBy
+  updatedBy?: string;
+  updatedByUser?: UserSummary;    // resolved from updatedBy
+  deletedBy?: string;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string;
@@ -176,20 +227,39 @@ export interface Deal {
 
 export interface Activity {
   id: string;
-  type: ActivityType;        // Required enum
-  subject: string;           // Required - max 200 chars
+  // Required fields
+  type: ActivityType;
+  subject: string;        // max 200 chars
   body?: string;
+  priority: ActivityPriority;
   status: ActivityStatus;
-  priority: ActivityPriority; // Required enum
-  dueDate: string;           // Required - YYYY-MM-DD format
-  dueTime: string;           // Required - HH:MM or HH:MM:SS format
-  contactId: string;         // Required - from contact dropdown
-  assignedTo: string;        // Required - user UUID
-  ownerId: string;
+  // Optional fields
+  outcome?: ActivityOutcome;
+  // Scheduling
+  dueDate: string;        // YYYY-MM-DD
+  dueTime: string;        // HH:MM
+  reminderAt?: string;
+  location?: string;
+  duration?: number;
+  // Relations
+  contactId: string;
   contact?: Contact;
-  owner?: User;
-  assignedUser?: User;
+  dealId?: string;
+  deal?: Deal;
+  companyId?: string;
+  company?: Company;
+  // Assignment
+  assignedTo: string;
+  assignedUser?: UserSummary;     // resolved from assignedTo
+  ownerId?: string;
+  owner?: UserSummary;            // resolved from ownerId
+  // System / audit
   workspaceId: string;
+  createdBy?: string;
+  createdByUser?: UserSummary;    // resolved from createdBy
+  updatedBy?: string;
+  updatedByUser?: UserSummary;    // resolved from updatedBy
+  deletedBy?: string;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string;
@@ -251,6 +321,16 @@ export enum DealPriority {
   URGENT = 'urgent',
 }
 
+export enum DealLostReason {
+  PRICE = 'price',
+  COMPETITION = 'competition',
+  TIMING = 'timing',
+  NO_BUDGET = 'no-budget',
+  NO_DECISION = 'no-decision',
+  PRODUCT_FIT = 'product-fit',
+  OTHER = 'other',
+}
+
 export enum ActivityType {
   CALL = 'call',
   EMAIL = 'email',
@@ -269,6 +349,13 @@ export enum ActivityPriority {
 export enum ActivityStatus {
   OPEN = 'OPEN',
   DONE = 'DONE',
+}
+
+export enum ActivityOutcome {
+  COMPLETED = 'completed',
+  NO_ANSWER = 'no-answer',
+  LEFT_VOICEMAIL = 'left-voicemail',
+  RESCHEDULED = 'rescheduled',
 }
 
 export enum Industry {
@@ -301,6 +388,26 @@ export enum LeadSource {
   OTHER = 'other',
 }
 
+export enum CompanyStatus {
+  PROSPECT = 'prospect',
+  ACTIVE = 'active',
+  CHURNED = 'churned',
+  INACTIVE = 'inactive',
+}
+
+export enum ContactStatus {
+  ACTIVE = 'active',
+  INACTIVE = 'inactive',
+  BOUNCED = 'bounced',
+  UNSUBSCRIBED = 'unsubscribed',
+}
+
+export enum PreferredContactMethod {
+  EMAIL = 'email',
+  PHONE = 'phone',
+  MOBILE = 'mobile',
+}
+
 export enum UserStatus {
   ACTIVE = 'ACTIVE',
   INVITED = 'INVITED',
@@ -318,66 +425,100 @@ export enum WorkspaceRole {
 // ============================================
 
 export interface CreateCompanyRequest {
+  // Required fields
   name: string;
-  website: string;
-  industry: Industry;
-  companySize?: CompanySize;
   email: string;
   phone: string;
-  address: string;
-  city: string;
-  state: string;
-  postcode: string;
+  website: string;
+  industry: Industry;
   country: string;
+  state: string;
+  city: string;
+  address: string;
+  postalCode: string;     // renamed from postcode
   leadSource: LeadSource;
+  // Optional fields
+  status?: CompanyStatus;
+  companySize?: CompanySize;
+  numberOfEmployees?: number;
+  annualRevenue?: number;
+  linkedinUrl?: string;
+  timezone?: string;
+  description?: string;
+  ownerId?: string;
 }
 
 export interface UpdateCompanyRequest extends Partial<CreateCompanyRequest> {}
 
 export interface CreateContactRequest {
-  firstName: string;        // Required
-  lastName: string;         // Required
-  email: string;            // Required
-  mobile: string;           // Required
-  companyId: string;        // Required - UUID from company list
-  assignedTo: string;       // Required - UUID from user list
-  phone?: string;
+  // Required fields
+  name: string;
+  email: string;
+  companyId: string;
+  assignedTo: string;
+  // Optional fields
+  phone?: string;         // max 30 chars
+  mobile?: string;        // max 30 chars
   jobTitle?: string;
+  department?: string;
+  linkedinUrl?: string;
+  status?: ContactStatus;
+  leadSource?: LeadSource;
+  preferredContactMethod?: PreferredContactMethod;
   isPrimary?: boolean;
+  doNotContact?: boolean;
 }
 
 export interface UpdateContactRequest extends Partial<CreateContactRequest> {}
 
 export interface CreateDealRequest {
-  title: string;            // Required
-  dealValue: number;        // Required - integer
-  stage: DealStage;         // Required
-  priority: DealPriority;   // Required
-  companyId: string;        // Required - UUID from company list
-  contactId: string;        // Required - UUID, must belong to company
-  assignedTo: string;       // Required - UUID from user list
+  // Required fields
+  title: string;
+  dealValue: number;      // integer, cents
+  stage: DealStage;
+  priority: DealPriority;
+  companyId: string;
+  assignedTo: string;
+  // Optional fields
   currency?: string;
   status?: DealStatus;
+  contactId?: string;
   probability?: number;
   expectedCloseDate?: string;
+  actualCloseDate?: string;
+  lostReason?: DealLostReason;  // required when status = LOST
+  source?: LeadSource;
   description?: string;
 }
 
-export interface UpdateDealRequest extends Partial<CreateDealRequest> {}
-
-export interface CreateActivityRequest {
-  type: ActivityType;       // Required
-  priority: ActivityPriority; // Required
-  subject: string;          // Required - max 200 chars
-  dueDate: string;          // Required - YYYY-MM-DD format
-  dueTime: string;          // Required - HH:MM or HH:MM:SS format
-  contactId: string;        // Required - UUID from contact list
-  assignedTo: string;       // Required - UUID from user list
-  body?: string;
-  status?: ActivityStatus;
+export interface UpdateDealRequest extends Partial<CreateDealRequest> {
+  contactId?: string | null;  // can be set to null to disassociate
 }
 
-export interface UpdateActivityRequest extends Partial<CreateActivityRequest> {}
+export interface CreateActivityRequest {
+  // Required fields
+  type: ActivityType;
+  subject: string;        // max 200 chars
+  priority: ActivityPriority;
+  dueDate: string;        // YYYY-MM-DD
+  dueTime: string;        // HH:MM or HH:MM:SS
+  contactId: string;
+  assignedTo: string;
+  // Optional fields
+  body?: string;
+  status?: ActivityStatus;
+  outcome?: ActivityOutcome;
+  reminderAt?: string;    // ISO datetime
+  location?: string;
+  duration?: number;
+  dealId?: string;
+  companyId?: string;
+}
+
+export interface UpdateActivityRequest extends Partial<CreateActivityRequest> {
+  dealId?: string | null;     // can be set to null
+  companyId?: string | null;  // can be set to null
+}
 
 export interface CreateUserRequest {
   fullName: string;
@@ -549,7 +690,7 @@ export const companiesService = {
     apiClient.post<Company>('/api/v1/companies', data),
 
   update: (id: string, data: UpdateCompanyRequest) =>
-    apiClient.put<Company>(`/api/v1/companies/${id}`, data),
+    apiClient.patch<Company>(`/api/v1/companies/${id}`, data),
 
   delete: (id: string) =>
     apiClient.delete<{ message: string }>(`/api/v1/companies/${id}`),
@@ -580,7 +721,7 @@ export const contactsService = {
     apiClient.post<Contact>('/api/v1/contacts', data),
 
   update: (id: string, data: UpdateContactRequest) =>
-    apiClient.put<Contact>(`/api/v1/contacts/${id}`, data),
+    apiClient.patch<Contact>(`/api/v1/contacts/${id}`, data),
 
   delete: (id: string) =>
     apiClient.delete<{ message: string }>(`/api/v1/contacts/${id}`),
@@ -714,75 +855,6 @@ export const useCompanies = (initialParams: ListQueryParams = {}) => {
 };
 ```
 
-### hooks/useCompany.ts
-
-```typescript
-import { useState, useEffect } from 'react';
-import { companiesService } from '@/services';
-import type { Company, ApiError } from '@/types/api';
-
-export const useCompany = (id: string | undefined) => {
-  const [company, setCompany] = useState<Company | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<ApiError | null>(null);
-
-  useEffect(() => {
-    if (!id) {
-      setLoading(false);
-      return;
-    }
-
-    const fetchCompany = async () => {
-      try {
-        setLoading(true);
-        const data = await companiesService.getById(id);
-        setCompany(data);
-        setError(null);
-      } catch (err) {
-        setError(err as ApiError);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCompany();
-  }, [id]);
-
-  return { company, loading, error };
-};
-```
-
-### hooks/useCreateCompany.ts
-
-```typescript
-import { useState } from 'react';
-import { companiesService } from '@/services';
-import type { Company, CreateCompanyRequest, ApiError } from '@/types/api';
-
-export const useCreateCompany = () => {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<ApiError | null>(null);
-
-  const createCompany = async (
-    data: CreateCompanyRequest
-  ): Promise<Company | null> => {
-    try {
-      setLoading(true);
-      setError(null);
-      const company = await companiesService.create(data);
-      return company;
-    } catch (err) {
-      setError(err as ApiError);
-      return null;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return { createCompany, loading, error };
-};
-```
-
 ### hooks/useDeals.ts
 
 ```typescript
@@ -838,55 +910,6 @@ export const useDeals = (initialParams: ListQueryParams = {}) => {
 ---
 
 ## Error Handling
-
-### components/ErrorBoundary.tsx
-
-```typescript
-import React, { Component, ReactNode } from 'react';
-import type { ApiError } from '@/types/api';
-
-interface Props {
-  children: ReactNode;
-  fallback?: (error: Error) => ReactNode;
-}
-
-interface State {
-  hasError: boolean;
-  error: Error | null;
-}
-
-export class ErrorBoundary extends Component<Props, State> {
-  constructor(props: Props) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-
-  static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('ErrorBoundary caught:', error, errorInfo);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      if (this.props.fallback) {
-        return this.props.fallback(this.state.error!);
-      }
-
-      return (
-        <div className="error-container">
-          <h1>Something went wrong</h1>
-          <p>{this.state.error?.message}</p>
-        </div>
-      );
-    }
-
-    return this.props.children;
-  }
-}
-```
 
 ### utils/errorHandling.ts
 
@@ -997,41 +1020,6 @@ export const useDeleteCompanyMutation = () => {
 };
 ```
 
-#### Example Component with React Query
-
-```typescript
-import { useCompaniesQuery, useCreateCompanyMutation } from '@/hooks/queries';
-
-export const CompaniesList = () => {
-  const { data: companies, isLoading, error } = useCompaniesQuery();
-  const createMutation = useCreateCompanyMutation();
-
-  if (isLoading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error.message}</div>;
-
-  const handleCreate = async () => {
-    await createMutation.mutateAsync({
-      name: 'New Company',
-      industry: 'Technology',
-    });
-  };
-
-  return (
-    <div>
-      <button onClick={handleCreate} disabled={createMutation.isPending}>
-        {createMutation.isPending ? 'Creating...' : 'Create Company'}
-      </button>
-
-      <ul>
-        {companies?.map((company) => (
-          <li key={company.id}>{company.name}</li>
-        ))}
-      </ul>
-    </div>
-  );
-};
-```
-
 ---
 
 ## Testing
@@ -1067,47 +1055,6 @@ export const renderWithProviders = (
 };
 ```
 
-### Example Test
-
-```typescript
-import { screen, waitFor } from '@testing-library/react';
-import { renderWithProviders } from '@/test-utils';
-import { CompaniesList } from '@/components/CompaniesList';
-import { companiesService } from '@/services';
-
-jest.mock('@/services');
-
-describe('CompaniesList', () => {
-  it('should render companies', async () => {
-    const mockCompanies = [
-      { id: '1', name: 'Acme Corp', industry: 'Tech' },
-      { id: '2', name: 'TechStart', industry: 'SaaS' },
-    ];
-
-    (companiesService.getAll as jest.Mock).mockResolvedValue(mockCompanies);
-
-    renderWithProviders(<CompaniesList />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Acme Corp')).toBeInTheDocument();
-      expect(screen.getByText('TechStart')).toBeInTheDocument();
-    });
-  });
-
-  it('should handle errors', async () => {
-    (companiesService.getAll as jest.Mock).mockRejectedValue(
-      new Error('Failed to fetch')
-    );
-
-    renderWithProviders(<CompaniesList />);
-
-    await waitFor(() => {
-      expect(screen.getByText(/error/i)).toBeInTheDocument();
-    });
-  });
-});
-```
-
 ---
 
 ## Utility Functions
@@ -1137,8 +1084,6 @@ export const formatDate = (dateString: string): string => {
   }).format(new Date(dateString));
 };
 
-// Example: formatDate('2024-01-15T10:30:00.000Z') => "Jan 15, 2024"
-
 export const formatDateTime = (dateString: string): string => {
   return new Intl.DateTimeFormat('en-AU', {
     year: 'numeric',
@@ -1162,33 +1107,7 @@ if (error) return <ErrorMessage error={error} />;
 if (!data) return null;
 ```
 
-### 2. Use Optimistic Updates
-
-```typescript
-const updateMutation = useMutation({
-  mutationFn: companiesService.update,
-  onMutate: async (variables) => {
-    // Cancel outgoing refetches
-    await queryClient.cancelQueries({ queryKey: ['companies'] });
-
-    // Snapshot previous value
-    const previous = queryClient.getQueryData(['companies']);
-
-    // Optimistically update
-    queryClient.setQueryData(['companies'], (old: Company[]) =>
-      old.map((c) => (c.id === variables.id ? { ...c, ...variables.data } : c))
-    );
-
-    return { previous };
-  },
-  onError: (err, variables, context) => {
-    // Rollback on error
-    queryClient.setQueryData(['companies'], context?.previous);
-  },
-});
-```
-
-### 3. Debounce Search Inputs
+### 2. Debounce Search Inputs
 
 ```typescript
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
@@ -1201,11 +1120,11 @@ const { data } = useCompaniesQuery({
 });
 ```
 
-### 4. Type-Safe API Calls
+### 3. Type-Safe API Calls
 
 Always use TypeScript types for requests and responses. Never use `any`.
 
-### 5. Environment Validation
+### 4. Environment Validation
 
 Validate environment variables at app startup:
 
@@ -1245,30 +1164,31 @@ const headers = {
 };
 ```
 
-### Issue: Wrong Type Imports
+### Issue: postalCode field not accepted
 
-**Error:** Type errors in components
+**Error:** Validation fails on company create/update
 
-**Solution:**
+**Solution:** Use `postalCode` (camelCase) — the field was renamed from `postcode`.
+
 ```typescript
-// Use 'import type' for types
-import type { Company } from '@/types/api';
+// Correct
+const company = { postalCode: '2000', ... };
 
-// Regular import for functions
-import { companiesService } from '@/services';
+// Wrong - will fail validation
+const company = { postcode: '2000', ... };
 ```
 
 ---
 
 ## Next Steps
 
-1. ✅ Copy TypeScript types to your project
-2. ✅ Set up API service layer
-3. ✅ Create custom hooks or React Query hooks
-4. ✅ Implement error handling
-5. ✅ Add loading states
-6. ✅ Test API integration
-7. ✅ Build UI components
+1. Copy TypeScript types to your project
+2. Set up API service layer
+3. Create custom hooks or React Query hooks
+4. Implement error handling
+5. Add loading states
+6. Test API integration
+7. Build UI components
 
 ---
 
@@ -1278,7 +1198,3 @@ import { companiesService } from '@/services';
 - **Backend README:** [README.md](./README.md)
 - **React Query Docs:** https://tanstack.com/query/latest
 - **TypeScript Handbook:** https://www.typescriptlang.org/docs
-
----
-
-**Questions?** Create an issue at: https://github.com/YOUR_USERNAME/analytics-dashboard-be/issues

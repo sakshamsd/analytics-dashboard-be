@@ -50,13 +50,15 @@ export class Company {
 	@PrimaryGeneratedColumn("uuid")
 	id!: string;
 
+	// ── Required fields ──────────────────────────────────────────────────────
+
 	@Column({ type: "varchar" })
 	name!: string;
 
 	@Column({ type: "varchar", length: 320 })
 	email!: string;
 
-	@Column({ type: "varchar" })
+	@Column({ type: "varchar", length: 30 })
 	phone!: string;
 
 	@Column({ type: "varchar" })
@@ -64,6 +66,30 @@ export class Company {
 
 	@Column({ type: "enum", enum: Industry })
 	industry!: Industry;
+
+	@Column({ type: "varchar" })
+	country!: string;
+
+	@Column({ type: "varchar" })
+	state!: string;
+
+	@Column({ type: "varchar" })
+	city!: string;
+
+	@Column({ type: "varchar" })
+	address!: string;
+
+	@Column({ type: "varchar", length: 20, name: "postal_code" })
+	postalCode!: string;
+
+	@Column({ type: "enum", enum: LeadSource })
+	leadSource!: LeadSource;
+
+	@Index()
+	@Column({ type: "enum", enum: CompanyStatus, default: CompanyStatus.PROSPECT })
+	status!: CompanyStatus;
+
+	// ── Optional fields ───────────────────────────────────────────────────────
 
 	@Column({ type: "enum", enum: CompanySize, nullable: true })
 	companySize?: CompanySize | null;
@@ -80,42 +106,15 @@ export class Company {
 	@Column({ type: "varchar", length: 60, nullable: true })
 	timezone?: string | null;
 
-	@OneToMany("Contact", "company")
-	contacts!: any[];
-
-	@Column({ type: "varchar" })
-	country!: string;
-
-	@Column({ type: "varchar" })
-	state!: string;
-
-	@Column({ type: "varchar" })
-	city!: string;
-
-	@Column({ type: "varchar" })
-	address!: string;
-
-	@Column({ type: "varchar", length: 20 })
-	postcode!: string;
-
-	@Column({ type: "enum", enum: LeadSource })
-	leadSource!: LeadSource;
-
 	@Column({ type: "text", nullable: true })
 	description?: string | null;
 
-	@Index()
-	@Column({ type: "enum", enum: CompanyStatus, default: CompanyStatus.PROSPECT })
-	status!: CompanyStatus;
+	// ── Tracking ──────────────────────────────────────────────────────────────
 
 	@Column({ type: "timestamptz", nullable: true, name: "last_activity_at" })
 	lastActivityAt?: Date | null;
 
-	@CreateDateColumn({ name: "created_at", type: "timestamptz" })
-	createdAt!: Date;
-
-	@UpdateDateColumn({ name: "updated_at", type: "timestamptz" })
-	updatedAt!: Date;
+	// ── System / audit ────────────────────────────────────────────────────────
 
 	@Index()
 	@Column({ type: "uuid" })
@@ -131,9 +130,20 @@ export class Company {
 	@Column({ type: "uuid", nullable: true })
 	updatedBy!: string | null;
 
+	@Column({ type: "uuid", nullable: true })
+	deletedBy!: string | null;
+
+	@CreateDateColumn({ name: "created_at", type: "timestamptz" })
+	createdAt!: Date;
+
+	@UpdateDateColumn({ name: "updated_at", type: "timestamptz" })
+	updatedAt!: Date;
+
 	@Column({ type: "timestamp", nullable: true })
 	deletedAt!: Date | null;
 
-	@Column({ type: "uuid", nullable: true })
-	deletedBy!: string | null;
+	// ── Relations ─────────────────────────────────────────────────────────────
+
+	@OneToMany("Contact", "company")
+	contacts!: any[];
 }

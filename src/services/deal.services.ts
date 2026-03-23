@@ -6,11 +6,20 @@ import { User } from "../entities/User.js";
 import { AppError } from "../errors/AppError.js";
 import { IsNull } from "typeorm";
 import type { CreateDealInput, UpdateDealInput } from "../validation/deal.schema.js";
+import { enrichWithUsers, enrichOneWithUsers, type UserFieldMapping } from "../utils/enrichUsers.js";
 
 const dealRepo = AppDataSource.getRepository(Deals);
 const companyRepo = AppDataSource.getRepository(Company);
 const contactRepo = AppDataSource.getRepository(Contact);
 const userRepo = AppDataSource.getRepository(User);
+
+// Fields to resolve from UUID → { id, fullName } object in every response
+const USER_FIELDS: UserFieldMapping[] = [
+	{ idField: "assignedTo", outputKey: "assignedUser" },
+	{ idField: "ownerId",    outputKey: "owner" },
+	{ idField: "createdBy",  outputKey: "createdByUser" },
+	{ idField: "updatedBy",  outputKey: "updatedByUser" },
+];
 
 export interface ListDealsParams {
 	page?: number | undefined;
@@ -54,7 +63,7 @@ const ALLOWED_SORT_FIELDS: Record<string, string> = {
 export async function listDeals(
 	workspaceId: string,
 	params: ListDealsParams = {}
-): Promise<PaginatedResult<Deals>> {
+): Promise<PaginatedResult<any>> {
 	const page = Math.max(1, params.page || 1);
 	const limit = Math.min(100, Math.max(1, params.limit || 10));
 	const skip = (page - 1) * limit;
@@ -113,8 +122,10 @@ export async function listDeals(
 		.take(limit)
 		.getManyAndCount();
 
+	const enrichedData = await enrichWithUsers(data, USER_FIELDS);
+
 	return {
-		data,
+		data: enrichedData,
 		pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
 	};
 }
@@ -129,7 +140,7 @@ export async function getDealById(workspaceId: string, id: string) {
 	});
 
 	if (!deal) throw new AppError("Deal not found", 404);
-	return deal;
+	return enrichOneWithUsers(deal, USER_FIELDS);
 }
 
 /**
@@ -180,7 +191,8 @@ export async function createDeal(workspaceId: string, userId: string, input: Cre
 	if (input.status !== undefined) dealData.status = input.status;
 
 	const deal = dealRepo.create(dealData);
-	return dealRepo.save(deal);
+	const saved = await dealRepo.save(deal);
+	return enrichOneWithUsers(saved, USER_FIELDS);
 }
 
 /**
@@ -247,7 +259,8 @@ export async function updateDeal(
 
 	deal.updatedBy = userId;
 
-	return dealRepo.save(deal);
+	const saved = await dealRepo.save(deal);
+	return enrichOneWithUsers(saved, USER_FIELDS);
 }
 
 /**
@@ -279,7 +292,8 @@ export async function restoreDeal(workspaceId: string, userId: string, id: strin
 	deal.deletedBy = null;
 	deal.updatedBy = userId;
 
-	return dealRepo.save(deal);
+	const saved = await dealRepo.save(deal);
+	return enrichOneWithUsers(saved, USER_FIELDS);
 }
 
 /**
