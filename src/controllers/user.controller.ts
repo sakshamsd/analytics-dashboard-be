@@ -21,8 +21,14 @@ export async function listUsersHandler(req: Request, res: Response, next: NextFu
 		const ctx = req.ctx;
 		if (!ctx) throw new AppError("Request context missing", 500);
 
-		const users = await listUsers(ctx.workspaceId);
-		res.json(users);
+		const page = req.query.page ? parseInt(req.query.page as string, 10) : undefined;
+		const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+		const search = req.query.search as string | undefined;
+		const sortBy = req.query.sortBy as string | undefined;
+		const sortOrder = req.query.sortOrder as "ASC" | "DESC" | undefined;
+
+		const result = await listUsers(ctx.workspaceId, { page, limit, search, sortBy, sortOrder });
+		res.json(result);
 	} catch (err) {
 		next(err);
 	}

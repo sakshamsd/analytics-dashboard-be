@@ -10,18 +10,70 @@ const userRepo = AppDataSource.getRepository(User);
 const memberRepo = AppDataSource.getRepository(WorkspaceMember);
 const workspaceRepo = AppDataSource.getRepository(Workspace);
 
+export interface ListUsersParams {
+	page?: number | undefined;
+	limit?: number | undefined;
+	search?: string | undefined;
+	sortBy?: string | undefined;
+	sortOrder?: "ASC" | "DESC" | undefined;
+}
+
+export interface PaginatedResult<T> {
+	data: T[];
+	pagination: {
+		page: number;
+		limit: number;
+		total: number;
+		totalPages: number;
+	};
+}
+
+const ALLOWED_SORT_FIELDS: Record<string, string> = {
+	createdAt: "u.createdAt",
+	updatedAt: "u.updatedAt",
+	fullName: "u.fullName",
+	email: "u.email",
+	status: "u.status",
+};
+
 /**
- * List users in a workspace (workspace scoped via membership)
+ * List users in a workspace with pagination, search, and sorting
  */
-export async function listUsers(workspaceId: string) {
-	return userRepo
+export async function listUsers(
+	workspaceId: string,
+	params: ListUsersParams = {}
+): Promise<PaginatedResult<User>> {
+	const page = Math.max(1, params.page || 1);
+	const limit = Math.min(100, Math.max(1, params.limit || 10));
+	const skip = (page - 1) * limit;
+	const sortField = ALLOWED_SORT_FIELDS[params.sortBy ?? ""] ?? "u.createdAt";
+	const sortOrder = params.sortOrder === "ASC" ? "ASC" : "DESC";
+
+	const qb = userRepo
 		.createQueryBuilder("u")
 		.innerJoin(WorkspaceMember, "wm", 'wm."userId" = u."id" AND wm."workspaceId" = :wid', {
 			wid: workspaceId,
 		})
-		.where('u."deletedAt" IS NULL')
-		.orderBy('u."createdAt"', "DESC")
-		.getMany();
+		.where("u.deletedAt IS NULL");
+
+	if (params.search) {
+		const searchTerm = `%${params.search}%`;
+		qb.andWhere(
+			"(u.fullName ILIKE :search OR u.email ILIKE :search)",
+			{ search: searchTerm }
+		);
+	}
+
+	const [data, total] = await qb
+		.orderBy(sortField, sortOrder)
+		.skip(skip)
+		.take(limit)
+		.getManyAndCount();
+
+	return {
+		data,
+		pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+	};
 }
 
 /**

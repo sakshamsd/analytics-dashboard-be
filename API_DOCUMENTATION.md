@@ -110,6 +110,7 @@ All list endpoints support the following query parameters:
 **Contacts:** `status`, `companyId`, `assignedTo`, `ownerId`, `doNotContact`
 **Deals:** `status`, `stage`, `priority`, `companyId`, `contactId`, `assignedTo`, `ownerId`
 **Activities:** `type`, `status`, `priority`, `contactId`, `dealId`, `companyId`, `assignedTo`, `ownerId`
+**Users:** no additional filters (search by `fullName` or `email` via `search` param)
 
 **Multi-value filters:** Pass comma-separated values to filter by multiple values:
 ```
@@ -249,16 +250,34 @@ Soft delete multiple companies.
 ---
 
 #### `GET /api/v1/companies/:id/contacts`
-Get all contacts belonging to a company.
+Get all contacts belonging to a company (paginated).
 
-**Response:** Array of Contact objects (no pagination).
+**Query Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `page` | integer | Page number |
+| `limit` | integer | Items per page (max 100) |
+| `search` | string | Search name, email, mobile, jobTitle |
+| `sortBy` | string | `createdAt`, `name`, `email`, `status`, `lastActivityAt` |
+| `sortOrder` | string | `ASC` or `DESC` |
+
+**Response:** Paginated list of Contact objects.
 
 ---
 
 #### `GET /api/v1/companies/:id/deals`
 Get all deals belonging to a company (paginated).
 
-**Query Parameters:** `page`, `limit`
+**Query Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `page` | integer | Page number |
+| `limit` | integer | Items per page (max 100) |
+| `search` | string | Search deal title |
+| `sortBy` | string | `createdAt`, `dealValue`, `title`, `stage`, `status`, `priority`, `expectedCloseDate` |
+| `sortOrder` | string | `ASC` or `DESC` |
 
 **Response:** Paginated list of Deal objects.
 
@@ -347,10 +366,34 @@ Restore a soft-deleted contact.
 #### `GET /api/v1/contacts/:id/deals`
 Get all deals associated with a contact (paginated).
 
+**Query Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `page` | integer | Page number |
+| `limit` | integer | Items per page (max 100) |
+| `search` | string | Search deal title |
+| `sortBy` | string | `createdAt`, `dealValue`, `title`, `stage`, `status`, `priority`, `expectedCloseDate` |
+| `sortOrder` | string | `ASC` or `DESC` |
+
+**Response:** Paginated list of Deal objects.
+
 ---
 
 #### `GET /api/v1/contacts/:id/activities`
 Get all activities associated with a contact (paginated).
+
+**Query Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `page` | integer | Page number |
+| `limit` | integer | Items per page (max 100) |
+| `search` | string | Search activity subject |
+| `sortBy` | string | `createdAt`, `dueDate`, `subject`, `status`, `priority`, `type` |
+| `sortOrder` | string | `ASC` or `DESC` |
+
+**Response:** Paginated list of Activity objects.
 
 ---
 
@@ -438,6 +481,18 @@ Restore a soft-deleted deal.
 
 #### `GET /api/v1/deals/:id/activities`
 Get all activities linked to a deal (paginated).
+
+**Query Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `page` | integer | Page number |
+| `limit` | integer | Items per page (max 100) |
+| `search` | string | Search activity subject |
+| `sortBy` | string | `createdAt`, `dueDate`, `subject`, `status`, `priority`, `type` |
+| `sortOrder` | string | `ASC` or `DESC` |
+
+**Response:** Paginated list of Activity objects.
 
 ---
 
@@ -576,7 +631,19 @@ Activity breakdown by type.
 Base path: `/api/v1/users`
 
 #### `GET /api/v1/users`
-List all users in workspace.
+List all users in workspace with pagination, search, and sorting.
+
+**Query Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `page` | integer | Page number |
+| `limit` | integer | Items per page (max 100) |
+| `search` | string | Search fullName, email |
+| `sortBy` | string | `createdAt`, `updatedAt`, `fullName`, `email`, `status` |
+| `sortOrder` | string | `ASC` or `DESC` |
+
+**Response:** Paginated list of User objects.
 
 #### `POST /api/v1/users`
 Invite/create a user.

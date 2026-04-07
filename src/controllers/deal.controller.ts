@@ -10,6 +10,13 @@ import {
 	getDealsByStageReport,
 	getDealsByMonthReport,
 } from "../services/deal.services.js";
+import {
+	getPipelineFunnel,
+	getRevenueForecast,
+	getWinLossAnalysis,
+	getDealValueDistribution,
+	getTopDeals,
+} from "../services/report.service.js";
 import { listActivities } from "../services/activity.services.js";
 import { createDealSchema, updateDealSchema } from "../validation/deal.schema.js";
 import { z } from "zod";
@@ -118,7 +125,10 @@ export async function getDealActivitiesHandler(req: Request, res: Response, next
 		await getDealById(workspaceId, id);
 		const page = req.query.page ? parseInt(req.query.page as string, 10) : undefined;
 		const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
-		const result = await listActivities(workspaceId, { page, limit, dealId: id });
+		const search = req.query.search as string | undefined;
+		const sortBy = req.query.sortBy as string | undefined;
+		const sortOrder = req.query.sortOrder as "ASC" | "DESC" | undefined;
+		const result = await listActivities(workspaceId, { page, limit, search, sortBy, sortOrder, dealId: id });
 		res.json(result);
 	} catch (err) {
 		next(err);
@@ -140,6 +150,59 @@ export async function getDealsByMonthReportHandler(req: Request, res: Response, 
 		const { workspaceId } = req.ctx!;
 		const data = await getDealsByMonthReport(workspaceId);
 		res.json({ data });
+	} catch (err) {
+		next(err);
+	}
+}
+
+export async function getPipelineFunnelHandler(req: Request, res: Response, next: NextFunction) {
+	try {
+		const { workspaceId } = req.ctx!;
+		const result = await getPipelineFunnel(workspaceId);
+		res.json(result);
+	} catch (err) {
+		next(err);
+	}
+}
+
+export async function getRevenueForecastHandler(req: Request, res: Response, next: NextFunction) {
+	try {
+		const { workspaceId } = req.ctx!;
+		const months = req.query.months ? parseInt(req.query.months as string, 10) : 6;
+		const result = await getRevenueForecast(workspaceId, months);
+		res.json(result);
+	} catch (err) {
+		next(err);
+	}
+}
+
+export async function getWinLossHandler(req: Request, res: Response, next: NextFunction) {
+	try {
+		const { workspaceId } = req.ctx!;
+		const period = (req.query.period as string) || "12m";
+		const result = await getWinLossAnalysis(workspaceId, period);
+		res.json(result);
+	} catch (err) {
+		next(err);
+	}
+}
+
+export async function getDealValueDistributionHandler(req: Request, res: Response, next: NextFunction) {
+	try {
+		const { workspaceId } = req.ctx!;
+		const result = await getDealValueDistribution(workspaceId);
+		res.json(result);
+	} catch (err) {
+		next(err);
+	}
+}
+
+export async function getTopDealsHandler(req: Request, res: Response, next: NextFunction) {
+	try {
+		const { workspaceId } = req.ctx!;
+		const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
+		const result = await getTopDeals(workspaceId, limit);
+		res.json(result);
 	} catch (err) {
 		next(err);
 	}

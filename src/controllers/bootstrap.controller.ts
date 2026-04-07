@@ -7,14 +7,7 @@ export async function getBootstrapHandler(req: Request, res: Response, next: Nex
 		const ctx = req.ctx;
 		if (!ctx) throw new AppError("Request context missing", 500);
 
-		// TEMP: later pull from Postgres user
-		const userDetails = {
-			name: "Default User",
-			email: "default@example.com",
-		};
-
-		const data = await getBootstrapData(ctx.workspaceId, ctx.userId, userDetails);
-
+		const data = await getBootstrapData(ctx.workspaceId, ctx.userId);
 		res.json(data);
 	} catch (err) {
 		next(err);
@@ -26,8 +19,8 @@ export async function updateBootstrapHandler(req: Request, res: Response, next: 
 		const ctx = req.ctx;
 		if (!ctx) throw new AppError("Request context missing", 500);
 
-		const updated = await updateBootstrapData(ctx.workspaceId, ctx.userId, req.body);
-
+		const { theme, widgets } = req.body;
+		const updated = await updateBootstrapData(ctx.workspaceId, ctx.userId, { theme, widgets });
 		res.json(updated);
 	} catch (err) {
 		next(err);

@@ -8,8 +8,9 @@ import {
 	restoreCompany,
 	bulkDeleteCompanies,
 } from "../services/company.services.js";
-import { getContactsByCompanyId } from "../services/contact.services.js";
+import { listContacts } from "../services/contact.services.js";
 import { listDeals } from "../services/deal.services.js";
+import { getCompaniesByIndustry } from "../services/report.service.js";
 import { createCompanySchema, updateCompanySchema } from "../validation/company.schema.js";
 import { z } from "zod";
 
@@ -103,14 +104,29 @@ export async function bulkDeleteCompaniesHandler(req: Request, res: Response, ne
 	}
 }
 
+export async function getCompaniesByIndustryHandler(req: Request, res: Response, next: NextFunction) {
+	try {
+		const { workspaceId } = req.ctx!;
+		const result = await getCompaniesByIndustry(workspaceId);
+		res.json(result);
+	} catch (err) {
+		next(err);
+	}
+}
+
 export async function getCompanyContactsHandler(req: Request, res: Response, next: NextFunction) {
 	try {
 		const { workspaceId } = req.ctx!;
 		const { id } = req.params;
 		if (!id) return res.status(400).json({ message: "Company ID is required" });
 		await getCompanyById(workspaceId, id);
-		const contacts = await getContactsByCompanyId(workspaceId, id);
-		res.json(contacts);
+		const page = req.query.page ? parseInt(req.query.page as string, 10) : undefined;
+		const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+		const search = req.query.search as string | undefined;
+		const sortBy = req.query.sortBy as string | undefined;
+		const sortOrder = req.query.sortOrder as "ASC" | "DESC" | undefined;
+		const result = await listContacts(workspaceId, { page, limit, search, sortBy, sortOrder, companyId: id });
+		res.json(result);
 	} catch (err) {
 		next(err);
 	}
@@ -124,7 +140,10 @@ export async function getCompanyDealsHandler(req: Request, res: Response, next: 
 		await getCompanyById(workspaceId, id);
 		const page = req.query.page ? parseInt(req.query.page as string, 10) : undefined;
 		const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
-		const result = await listDeals(workspaceId, { page, limit, companyId: id });
+		const search = req.query.search as string | undefined;
+		const sortBy = req.query.sortBy as string | undefined;
+		const sortOrder = req.query.sortOrder as "ASC" | "DESC" | undefined;
+		const result = await listDeals(workspaceId, { page, limit, search, sortBy, sortOrder, companyId: id });
 		res.json(result);
 	} catch (err) {
 		next(err);

@@ -9,6 +9,7 @@ import {
 	bulkDeleteActivities,
 	getActivitiesByTypeReport,
 } from "../services/activity.services.js";
+import { getActivityMetricsByUser } from "../services/report.service.js";
 import { createActivitySchema, updateActivitySchema } from "../validation/activity.schema.js";
 import { z } from "zod";
 
@@ -114,6 +115,16 @@ export async function getActivitiesByTypeReportHandler(req: Request, res: Respon
 		const { workspaceId } = req.ctx!;
 		const data = await getActivitiesByTypeReport(workspaceId);
 		res.json({ data });
+	} catch (err) {
+		next(err);
+	}
+}
+
+export async function getActivitiesByUserHandler(req: Request, res: Response, next: NextFunction) {
+	try {
+		const { workspaceId } = req.ctx!;
+		const result = await getActivityMetricsByUser(workspaceId);
+		res.json(result);
 	} catch (err) {
 		next(err);
 	}

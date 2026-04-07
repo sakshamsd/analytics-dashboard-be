@@ -1,47 +1,29 @@
 import { DashboardConfig } from "../mongo/models/dashboardConfig.model.js";
-import { AppError } from "../errors/AppError.js";
+import { DEFAULT_WIDGETS } from "../constants/defaultWidgets.js";
 
-export async function getBootstrapData(
-	workspaceId: string,
-	userId: string,
-	userDetails: { name: string; email: string }
-) {
+export async function getBootstrapData(workspaceId: string, userId: string) {
 	let doc = await DashboardConfig.findOne({ workspaceId, userId });
 
 	if (!doc) {
 		doc = await DashboardConfig.create({
 			workspaceId,
 			userId,
-			userDetails: {
-				userId,
-				workspaceId,
-				name: userDetails.name,
-				email: userDetails.email,
-			},
-			items: [],
-			layout: [],
-			settings: {
-				primaryColor: "#2563EB",
-				secondaryColor: "#E0E7FF",
-				accentColor: "#4F46E5",
-				textPrimaryColor: "#1F2937",
-				textSecondaryColor: "#4B5563",
-				backgroundColor: "#FFFFFF",
-				primaryLogo: null,
-				secondaryLogo: null,
-				favicon: null,
-			},
+			widgets: DEFAULT_WIDGETS,
 		});
 	}
 
 	return doc;
 }
 
-export async function updateBootstrapData(workspaceId: string, userId: string, payload: any) {
+export async function updateBootstrapData(
+	workspaceId: string,
+	userId: string,
+	payload: { theme?: string; widgets?: any[] }
+) {
 	const updated = await DashboardConfig.findOneAndUpdate(
 		{ workspaceId, userId },
-		{ ...payload },
-		{ upsert: true, new: true }
+		{ $set: payload },
+		{ upsert: true, new: true, runValidators: true }
 	);
 
 	return updated;

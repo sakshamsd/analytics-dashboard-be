@@ -10,6 +10,7 @@ import {
 } from "../services/contact.services.js";
 import { listDeals } from "../services/deal.services.js";
 import { listActivities } from "../services/activity.services.js";
+import { getContactGrowth } from "../services/report.service.js";
 import { createContactSchema, updateContactSchema } from "../validation/contact.schema.js";
 import { z } from "zod";
 
@@ -120,7 +121,20 @@ export async function getContactDealsHandler(req: Request, res: Response, next: 
 		await getContactById(workspaceId, id);
 		const page = req.query.page ? parseInt(req.query.page as string, 10) : undefined;
 		const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
-		const result = await listDeals(workspaceId, { page, limit, contactId: id });
+		const search = req.query.search as string | undefined;
+		const sortBy = req.query.sortBy as string | undefined;
+		const sortOrder = req.query.sortOrder as "ASC" | "DESC" | undefined;
+		const result = await listDeals(workspaceId, { page, limit, search, sortBy, sortOrder, contactId: id });
+		res.json(result);
+	} catch (err) {
+		next(err);
+	}
+}
+
+export async function getContactGrowthHandler(req: Request, res: Response, next: NextFunction) {
+	try {
+		const { workspaceId } = req.ctx!;
+		const result = await getContactGrowth(workspaceId);
 		res.json(result);
 	} catch (err) {
 		next(err);
@@ -135,7 +149,10 @@ export async function getContactActivitiesHandler(req: Request, res: Response, n
 		await getContactById(workspaceId, id);
 		const page = req.query.page ? parseInt(req.query.page as string, 10) : undefined;
 		const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
-		const result = await listActivities(workspaceId, { page, limit, contactId: id });
+		const search = req.query.search as string | undefined;
+		const sortBy = req.query.sortBy as string | undefined;
+		const sortOrder = req.query.sortOrder as "ASC" | "DESC" | undefined;
+		const result = await listActivities(workspaceId, { page, limit, search, sortBy, sortOrder, contactId: id });
 		res.json(result);
 	} catch (err) {
 		next(err);

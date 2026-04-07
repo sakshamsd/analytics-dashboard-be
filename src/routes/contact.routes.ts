@@ -9,9 +9,13 @@ import {
 	bulkDeleteContactsHandler,
 	getContactDealsHandler,
 	getContactActivitiesHandler,
+	getContactGrowthHandler,
 } from "../controllers/contact.controller.js";
 
 const router = Router();
+
+// Reports (must be before /:id routes)
+router.get("/reports/growth", getContactGrowthHandler); // GET /api/v1/contacts/reports/growth
 
 // Collection
 router.get("/", listContactsHandler);           // GET /api/v1/contacts

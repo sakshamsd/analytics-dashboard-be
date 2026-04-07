@@ -8,12 +8,14 @@ import {
 	restoreActivityHandler,
 	bulkDeleteActivitiesHandler,
 	getActivitiesByTypeReportHandler,
+	getActivitiesByUserHandler,
 } from "../controllers/activity.controller.js";
 
 const router = Router();
 
 // Reports
 router.get("/reports/by-type", getActivitiesByTypeReportHandler); // GET /api/v1/activities/reports/by-type
+router.get("/reports/by-user", getActivitiesByUserHandler);       // GET /api/v1/activities/reports/by-user
 
 // Collection
 router.get("/", listActivitiesHandler);         // GET /api/v1/activities

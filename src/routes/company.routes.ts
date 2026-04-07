@@ -9,9 +9,13 @@ import {
 	bulkDeleteCompaniesHandler,
 	getCompanyContactsHandler,
 	getCompanyDealsHandler,
+	getCompaniesByIndustryHandler,
 } from "../controllers/company.controller.js";
 
 const router = Router();
+
+// Reports (must be before /:id routes)
+router.get("/reports/by-industry", getCompaniesByIndustryHandler); // GET /api/v1/companies/reports/by-industry
 
 // Collection
 router.get("/", listCompaniesHandler);          // GET /api/v1/companies

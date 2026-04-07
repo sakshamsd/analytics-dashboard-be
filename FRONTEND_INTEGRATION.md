@@ -559,9 +559,11 @@ export interface PaginatedResponse<T> {
 
 // Query parameters for list endpoints
 export interface ListQueryParams {
-  page?: number;      // Default: 1
-  limit?: number;     // Default: 20
-  search?: string;    // Search term
+  page?: number;        // Default: 1
+  limit?: number;       // Default: 20
+  search?: string;      // Search term
+  sortBy?: string;      // Field to sort by (entity-specific)
+  sortOrder?: 'ASC' | 'DESC';  // Default: DESC
 }
 ```
 

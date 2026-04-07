@@ -1,70 +1,56 @@
 import mongoose, { Schema } from "mongoose";
 
-const DashboardItemSchema = new Schema(
+const WidgetLayoutSchema = new Schema(
 	{
-		id: { type: String, required: true },
-		title: String,
-		type: String,
-		dataId: String,
-		hideTitle: Boolean,
-		format: Schema.Types.Mixed,
-		caption: String,
-		textEditorConfig: Array,
-		fontSize: String,
-		fontFamily: String,
-		textColor: String,
-		backgroundColor: String,
+		x: { type: Number, required: true },
+		y: { type: Number, required: true },
+		w: { type: Number, required: true, min: 2, max: 12 },
+		h: { type: Number, required: true, min: 2, max: 8 },
 	},
 	{ _id: false }
 );
 
-const LayoutSchema = new Schema(
+const ChartConfigSchema = new Schema(
 	{
-		i: String,
-		x: Number,
-		y: Number,
-		w: Number,
-		h: Number,
-		moved: Boolean,
-		static: Boolean,
+		chartType: {
+			type: String,
+			enum: ["bar", "line", "area", "pie", "donut", "funnel", "radar", "scatter", "table"],
+			default: "bar",
+		},
+		colorScheme:  { type: String,  default: "default" },
+		showLegend:   { type: Boolean, default: true },
+		showGrid:     { type: Boolean, default: true },
+		showArea:     { type: Boolean, default: false },
+		stacked:      { type: Boolean, default: false },
+	},
+	{ _id: false }
+);
+
+const WidgetSchema = new Schema(
+	{
+		id:          { type: String, required: true },
+		type:        { type: String, required: true },
+		title:       { type: String, required: true },
+		dataSource:  { type: String, required: true },
+		layout:      { type: WidgetLayoutSchema, required: true },
+		chartConfig: { type: ChartConfigSchema,  default: () => ({}) },
+		refreshInterval: { type: Number, default: 300000 }, // 5 min in ms
 	},
 	{ _id: false }
 );
 
 const DashboardConfigSchema = new Schema(
 	{
-		version: { type: String, default: "1.0" },
-
+		userId:      { type: String, required: true },
 		workspaceId: { type: String, required: true },
-		userId: { type: String, required: true },
-
-		userDetails: {
-			userId: String,
-			workspaceId: String,
-			name: String,
-			email: String,
-		},
-
-		items: [DashboardItemSchema],
-		layout: [LayoutSchema],
-
-		settings: {
-			primaryColor: String,
-			secondaryColor: String,
-			accentColor: String,
-			textPrimaryColor: String,
-			textSecondaryColor: String,
-			backgroundColor: String,
-			primaryLogo: String,
-			secondaryLogo: String,
-			favicon: String,
-		},
+		theme:       { type: String, enum: ["light", "dark"], default: "light" },
+		gridCols:    { type: Number, default: 12 },
+		rowHeight:   { type: Number, default: 80 },
+		widgets:     { type: [WidgetSchema], default: [] },
 	},
-	{
-		timestamps: true,
-	}
+	{ timestamps: true }
 );
 
-DashboardConfigSchema.index({ workspaceId: 1, userId: 1 }, { unique: true });
+DashboardConfigSchema.index({ userId: 1, workspaceId: 1 }, { unique: true });
 
 export const DashboardConfig = mongoose.model("DashboardConfig", DashboardConfigSchema);

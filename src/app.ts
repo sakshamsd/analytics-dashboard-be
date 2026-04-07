@@ -10,6 +10,7 @@ import activityRoutes from "./routes/activity.routes.js";
 import { contextMiddleware } from "./middlewares/context.js";
 import userRoutes from "./routes/user.routes.js";
 import bootstrapRoutes from "./routes/botstrap.routes.js";
+import reportRoutes from "./routes/report.routes.js";
 
 const app = express();
 
@@ -43,6 +44,7 @@ app.use("/api/v1/deals", dealRoutes);
 app.use("/api/v1/activities", activityRoutes);
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/bootstrap", bootstrapRoutes);
+app.use("/api/v1", reportRoutes);
 
 app.use(errorHandler);
 
