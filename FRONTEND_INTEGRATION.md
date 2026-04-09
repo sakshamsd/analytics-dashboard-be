@@ -284,15 +284,137 @@ export interface WorkspaceMember {
   role: WorkspaceRole;
 }
 
-export interface DashboardConfig {
+export interface WidgetLayout {
+  x: number;   // grid column (0-based)
+  y: number;   // grid row (0-based)
+  w: number;   // width in columns (2–12)
+  h: number;   // height in rows (2–8)
+}
+
+export interface WidgetChartConfig {
+  chartType?: 'bar' | 'line' | 'area' | 'pie' | 'donut' | 'funnel' | 'table';
+  colorScheme?: 'blue' | 'green' | 'purple' | 'orange' | 'red';
+  showLegend?: boolean;
+  showGrid?: boolean;
+  showArea?: boolean;
+  stacked?: boolean;
+}
+
+export interface DashboardWidget {
   id: string;
-  workspaceId: string;
+  type: string;
+  title: string;
+  dataSource: string;       // API path this widget fetches from
+  layout: WidgetLayout;
+  chartConfig: WidgetChartConfig;
+  refreshInterval?: number; // ms, default 300000 (5 min)
+}
+
+export interface DashboardConfig {
+  _id: string;
   userId: string;
-  theme?: string;
-  layout?: any[];
-  items?: string[];
+  workspaceId: string;
+  theme: 'light' | 'dark';
+  gridCols: number;         // always 12
+  rowHeight: number;        // always 80
+  widgets: DashboardWidget[];
   createdAt: string;
   updatedAt: string;
+}
+
+// ============================================
+// Report Response Types
+// ============================================
+
+export interface KpiSummary {
+  totalPipeline: number;        // cents
+  activeContacts: number;
+  dealsWonThisMonth: { count: number; value: number };
+  activitiesThisWeek: number;
+}
+
+export interface ReportParam {
+  name: string;
+  type: 'number' | 'string';
+  default: string | number;
+  description: string;
+}
+
+export interface ReportDefinition {
+  id: string;
+  title: string;
+  description: string;
+  endpoint: string;
+  category: 'overview' | 'deals' | 'activities' | 'contacts' | 'companies';
+  widgetType: string;
+  params?: ReportParam[];
+}
+
+export interface ReportCatalogResponse {
+  total: number;
+  data: ReportDefinition[];
+}
+
+export interface PipelineFunnelRow {
+  stage: string;
+  count: number;
+  totalValue: number;
+  conversionRate: number | null;
+}
+
+export interface RevenueForecastRow {
+  month: string;      // YYYY-MM
+  expectedRevenue: number;
+  dealCount: number;
+}
+
+export interface WinLossMonthRow {
+  month: string;
+  won: number;
+  lost: number;
+  wonValue: number;
+  lostValue: number;
+}
+
+export interface WinLossResponse {
+  summary: { won: number; lost: number; winRate: number };
+  monthly: WinLossMonthRow[];
+  lostReasons: Array<{ reason: string; count: number }>;
+}
+
+export interface ValueDistributionRow {
+  bucket: string;
+  count: number;
+  totalValue: number;
+}
+
+export interface TopDeal {
+  id: string;
+  title: string;
+  dealValue: number;
+  status: DealStatus;
+  stage: DealStage;
+  companyName: string;
+  assignedToName: string;
+  expectedCloseDate: string | null;
+}
+
+export interface ActivityByUserRow {
+  userName: string;
+  activities: Partial<Record<ActivityType, number>>;
+  total: number;
+}
+
+export interface ContactGrowthRow {
+  month: string;
+  newContacts: number;
+  cumulative: number;
+}
+
+export interface IndustryRow {
+  industry: Industry;
+  count: number;
+  percentage: number;
 }
 
 // ============================================
@@ -792,13 +914,106 @@ export const activitiesService = {
 };
 ```
 
+### services/reports.ts
+
+```typescript
+import { apiClient } from './api';
+import type {
+  ReportCatalogResponse,
+  KpiSummary,
+  PipelineFunnelRow,
+  RevenueForecastRow,
+  WinLossResponse,
+  ValueDistributionRow,
+  TopDeal,
+  ActivityByUserRow,
+  ContactGrowthRow,
+  IndustryRow,
+} from '@/types/api';
+
+export const reportsService = {
+  // Catalog — discover all available reports
+  getCatalog: () =>
+    apiClient.get<ReportCatalogResponse>('/api/v1/reports'),
+
+  // Overview
+  getKpiSummary: () =>
+    apiClient.get<KpiSummary>('/api/v1/reports/kpi-summary'),
+
+  // Deals
+  getPipelineFunnel: () =>
+    apiClient.get<{ data: PipelineFunnelRow[] }>('/api/v1/deals/reports/pipeline-funnel'),
+
+  getRevenueForecast: (months = 6) =>
+    apiClient.get<{ data: RevenueForecastRow[] }>(
+      `/api/v1/deals/reports/revenue-forecast?months=${months}`
+    ),
+
+  getWinLoss: (period: '3m' | '6m' | '12m' | 'ytd' = '12m') =>
+    apiClient.get<WinLossResponse>(`/api/v1/deals/reports/win-loss?period=${period}`),
+
+  getValueDistribution: () =>
+    apiClient.get<{ data: ValueDistributionRow[] }>('/api/v1/deals/reports/value-distribution'),
+
+  getTopDeals: (limit = 10) =>
+    apiClient.get<{ data: TopDeal[] }>(`/api/v1/deals/reports/top-deals?limit=${limit}`),
+
+  getDealsByStage: () =>
+    apiClient.get<{ data: Array<{ stage: string; count: string; totalValue: string }> }>(
+      '/api/v1/deals/reports/by-stage'
+    ),
+
+  getDealsByMonth: () =>
+    apiClient.get<{ data: Array<{ month: string; count: string; totalValue: string }> }>(
+      '/api/v1/deals/reports/by-month'
+    ),
+
+  // Activities
+  getActivitiesByType: () =>
+    apiClient.get<{ data: Array<{ type: string; count: string }> }>(
+      '/api/v1/activities/reports/by-type'
+    ),
+
+  getActivitiesByUser: () =>
+    apiClient.get<{ data: ActivityByUserRow[] }>('/api/v1/activities/reports/by-user'),
+
+  // Contacts
+  getContactGrowth: () =>
+    apiClient.get<{ data: ContactGrowthRow[] }>('/api/v1/contacts/reports/growth'),
+
+  // Companies
+  getCompaniesByIndustry: () =>
+    apiClient.get<{ data: IndustryRow[] }>('/api/v1/companies/reports/by-industry'),
+};
+```
+
+### services/bootstrap.ts
+
+```typescript
+import { apiClient } from './api';
+import type { DashboardConfig, DashboardWidget } from '@/types/api';
+
+export const bootstrapService = {
+  // Get or create dashboard config for the current user
+  get: () =>
+    apiClient.get<DashboardConfig>('/api/v1/bootstrap'),
+
+  // Update theme and/or widget layout
+  update: (payload: { theme?: 'light' | 'dark'; widgets?: DashboardWidget[] }) =>
+    apiClient.put<DashboardConfig>('/api/v1/bootstrap', payload),
+};
+```
+
 ### services/index.ts
 
 ```typescript
 export * from './api';
 export * from './companies';
+export * from './contacts';
 export * from './deals';
-// Export other services...
+export * from './activities';
+export * from './reports';
+export * from './bootstrap';
 ```
 
 ---
@@ -907,6 +1122,72 @@ export const useDeals = (initialParams: ListQueryParams = {}) => {
 
   return { deals, pagination, loading, error, refetch, setPage, setLimit, setSearch };
 };
+```
+
+### hooks/queries/useReportsQuery.ts
+
+```typescript
+import { useQuery } from '@tanstack/react-query';
+import { reportsService, bootstrapService } from '@/services';
+
+// Report catalog — load once, rarely changes
+export const useReportCatalog = () =>
+  useQuery({
+    queryKey: ['reports', 'catalog'],
+    queryFn: reportsService.getCatalog,
+    staleTime: Infinity,
+  });
+
+// KPI summary — refresh every 5 minutes
+export const useKpiSummary = () =>
+  useQuery({
+    queryKey: ['reports', 'kpi-summary'],
+    queryFn: reportsService.getKpiSummary,
+    refetchInterval: 5 * 60 * 1000,
+  });
+
+export const usePipelineFunnel = () =>
+  useQuery({
+    queryKey: ['reports', 'pipeline-funnel'],
+    queryFn: reportsService.getPipelineFunnel,
+  });
+
+export const useRevenueForecast = (months = 6) =>
+  useQuery({
+    queryKey: ['reports', 'revenue-forecast', months],
+    queryFn: () => reportsService.getRevenueForecast(months),
+  });
+
+export const useWinLoss = (period: '3m' | '6m' | '12m' | 'ytd' = '12m') =>
+  useQuery({
+    queryKey: ['reports', 'win-loss', period],
+    queryFn: () => reportsService.getWinLoss(period),
+  });
+
+export const useTopDeals = (limit = 10) =>
+  useQuery({
+    queryKey: ['reports', 'top-deals', limit],
+    queryFn: () => reportsService.getTopDeals(limit),
+  });
+
+export const useContactGrowth = () =>
+  useQuery({
+    queryKey: ['reports', 'contact-growth'],
+    queryFn: reportsService.getContactGrowth,
+  });
+
+export const useCompaniesByIndustry = () =>
+  useQuery({
+    queryKey: ['reports', 'companies-by-industry'],
+    queryFn: reportsService.getCompaniesByIndustry,
+  });
+
+// Dashboard config
+export const useBootstrap = () =>
+  useQuery({
+    queryKey: ['bootstrap'],
+    queryFn: bootstrapService.get,
+  });
 ```
 
 ---
