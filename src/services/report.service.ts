@@ -1,5 +1,19 @@
 import { AppDataSource } from "../database/data-source.js";
 
+// Column name reference (actual DB column names based on entity @Column annotations):
+//
+// No explicit `name` → TypeORM uses the camelCase property name as-is:
+//   workspaceId   → "workspaceId"    (deals, contacts, companies, activities, users)
+//   deletedAt     → "deletedAt"      (deals, contacts, companies, activities)
+//   updatedAt     → "updatedAt"      (deals, activities)  [User/Company/Contact use explicit names]
+//   createdAt     → "createdAt"      (deals, activities)
+//   fullName      → "fullName"       (users)
+//
+// Explicit `name` annotation → snake_case as declared:
+//   deal_value, expected_close_date, actual_close_date, lost_reason
+//   company_id, contact_id, assigned_to, due_date, due_time
+//   created_at, updated_at  (contacts and companies have explicit names)
+
 // ---------------------------------------------------------------------------
 // Report 1: Pipeline Funnel with Conversion Rates
 // ---------------------------------------------------------------------------
@@ -7,12 +21,12 @@ export async function getPipelineFunnel(workspaceId: string) {
 	const rows: any[] = await AppDataSource.query(
 		`SELECT
 			stage,
-			COUNT(*)::int                    AS count,
+			COUNT(*)::int                        AS count,
 			COALESCE(SUM(deal_value), 0)::bigint AS "totalValue",
 			COALESCE(ROUND(AVG(probability)), 0)::int AS "avgProbability"
 		FROM deals
-		WHERE workspace_id = $1
-			AND deleted_at IS NULL
+		WHERE "workspaceId" = $1
+			AND "deletedAt" IS NULL
 			AND status = 'OPEN'
 		GROUP BY stage
 		ORDER BY CASE stage
@@ -27,7 +41,6 @@ export async function getPipelineFunnel(workspaceId: string) {
 		[workspaceId]
 	);
 
-	// Attach conversion rates in JS (nextStage.count / currentStage.count * 100)
 	const data = rows.map((row, i) => ({
 		stage: row.stage,
 		count: row.count,
@@ -55,8 +68,8 @@ export async function getRevenueForecast(workspaceId: string, months = 6) {
 			COALESCE(SUM(deal_value), 0)::bigint     AS "totalValue",
 			COALESCE(SUM(deal_value * COALESCE(probability, 0) / 100), 0)::bigint AS "weightedValue"
 		FROM deals
-		WHERE workspace_id = $1
-			AND deleted_at IS NULL
+		WHERE "workspaceId" = $1
+			AND "deletedAt" IS NULL
 			AND status = 'OPEN'
 			AND expected_close_date IS NOT NULL
 			AND expected_close_date >= CURRENT_DATE
@@ -83,7 +96,7 @@ function periodToInterval(period: string): string {
 	switch (period) {
 		case "3m":  return "3 months";
 		case "6m":  return "6 months";
-		case "ytd": return `${new Date().getMonth() + 1} months`; // months since Jan 1
+		case "ytd": return `${new Date().getMonth() + 1} months`;
 		default:    return "12 months";
 	}
 }
@@ -94,15 +107,15 @@ export async function getWinLossAnalysis(workspaceId: string, period = "12m") {
 	const [monthlyRows, reasonRows]: [any[], any[]] = await Promise.all([
 		AppDataSource.query(
 			`SELECT
-				TO_CHAR(updated_at, 'YYYY-MM') AS month,
+				TO_CHAR("updatedAt", 'YYYY-MM') AS month,
 				status,
 				COUNT(*)::int                    AS count,
 				COALESCE(SUM(deal_value), 0)::bigint AS "totalValue"
 			FROM deals
-			WHERE workspace_id = $1
-				AND deleted_at IS NULL
+			WHERE "workspaceId" = $1
+				AND "deletedAt" IS NULL
 				AND status IN ('WON', 'LOST')
-				AND updated_at >= NOW() - ($2 || ' ')::INTERVAL
+				AND "updatedAt" >= NOW() - ($2 || ' ')::INTERVAL
 			GROUP BY month, status
 			ORDER BY month`,
 			[workspaceId, interval]
@@ -112,17 +125,16 @@ export async function getWinLossAnalysis(workspaceId: string, period = "12m") {
 				lost_reason AS reason,
 				COUNT(*)::int AS count
 			FROM deals
-			WHERE workspace_id = $1
-				AND deleted_at IS NULL
+			WHERE "workspaceId" = $1
+				AND "deletedAt" IS NULL
 				AND status = 'LOST'
-				AND updated_at >= NOW() - ($2 || ' ')::INTERVAL
+				AND "updatedAt" >= NOW() - ($2 || ' ')::INTERVAL
 			GROUP BY lost_reason
 			ORDER BY count DESC`,
 			[workspaceId, interval]
 		),
 	]);
 
-	// Pivot monthly rows into { month, won, lost, wonValue, lostValue }
 	const monthMap: Record<string, { month: string; won: number; lost: number; wonValue: number; lostValue: number }> = {};
 	for (const r of monthlyRows) {
 		if (!monthMap[r.month]) monthMap[r.month] = { month: r.month, won: 0, lost: 0, wonValue: 0, lostValue: 0 };
@@ -165,11 +177,11 @@ export async function getDealValueDistribution(workspaceId: string) {
 				WHEN deal_value < 10000000 THEN '50k-100k'
 				ELSE '100k+'
 			END AS bucket,
-			COUNT(*)::int                    AS count,
+			COUNT(*)::int                        AS count,
 			COALESCE(SUM(deal_value), 0)::bigint AS "totalValue"
 		FROM deals
-		WHERE workspace_id = $1
-			AND deleted_at IS NULL
+		WHERE "workspaceId" = $1
+			AND "deletedAt" IS NULL
 			AND status = 'OPEN'
 		GROUP BY bucket
 		ORDER BY MIN(deal_value)`,
@@ -195,17 +207,17 @@ export async function getTopDeals(workspaceId: string, limit = 10) {
 		`SELECT
 			d.id,
 			d.title,
-			d.deal_value           AS "dealValue",
+			d.deal_value          AS "dealValue",
 			d.stage,
 			d.probability,
-			d.expected_close_date  AS "expectedCloseDate",
-			c.name                 AS "companyName",
-			u.full_name            AS "assignedToName"
+			d.expected_close_date AS "expectedCloseDate",
+			c.name                AS "companyName",
+			u."fullName"          AS "assignedToName"
 		FROM deals d
 		JOIN companies c ON d.company_id = c.id
 		JOIN users     u ON d.assigned_to = u.id
-		WHERE d.workspace_id = $1
-			AND d.deleted_at IS NULL
+		WHERE d."workspaceId" = $1
+			AND d."deletedAt" IS NULL
 			AND d.status = 'OPEN'
 		ORDER BY d.deal_value DESC
 		LIMIT $2`,
@@ -232,20 +244,19 @@ export async function getTopDeals(workspaceId: string, limit = 10) {
 export async function getActivityMetricsByUser(workspaceId: string) {
 	const rows: any[] = await AppDataSource.query(
 		`SELECT
-			u.full_name AS "userName",
+			u."fullName" AS "userName",
 			a.type,
 			COUNT(*)::int AS count
 		FROM activities a
 		JOIN users u ON a.assigned_to = u.id
-		WHERE a.workspace_id = $1
-			AND a.deleted_at IS NULL
-			AND a.created_at >= NOW() - INTERVAL '30 days'
-		GROUP BY u.full_name, a.type
-		ORDER BY u.full_name, a.type`,
+		WHERE a."workspaceId" = $1
+			AND a."deletedAt" IS NULL
+			AND a."createdAt" >= NOW() - INTERVAL '30 days'
+		GROUP BY u."fullName", a.type
+		ORDER BY u."fullName", a.type`,
 		[workspaceId]
 	);
 
-	// Pivot: group by userName, build activities map
 	const userMap: Record<string, { userName: string; activities: Record<string, number>; total: number }> = {};
 	for (const r of rows) {
 		if (!userMap[r.userName]) {
@@ -263,14 +274,15 @@ export async function getActivityMetricsByUser(workspaceId: string) {
 // Report 7: Contact Growth Over Time
 // ---------------------------------------------------------------------------
 export async function getContactGrowth(workspaceId: string) {
+	// contacts.createdAt has explicit name "created_at" in the entity
 	const rows: any[] = await AppDataSource.query(
 		`SELECT
 			TO_CHAR(created_at, 'YYYY-MM') AS month,
 			COUNT(*)::int                  AS "newContacts",
 			SUM(COUNT(*)) OVER (ORDER BY TO_CHAR(created_at, 'YYYY-MM'))::int AS "cumulativeTotal"
 		FROM contacts
-		WHERE workspace_id = $1
-			AND deleted_at IS NULL
+		WHERE "workspaceId" = $1
+			AND "deletedAt" IS NULL
 			AND created_at >= NOW() - INTERVAL '12 months'
 		GROUP BY month
 		ORDER BY month`,
@@ -290,8 +302,8 @@ export async function getCompaniesByIndustry(workspaceId: string) {
 			COUNT(*)::int AS count,
 			ROUND(COUNT(*)::numeric / NULLIF(SUM(COUNT(*)) OVER (), 0) * 100, 1)::float AS percentage
 		FROM companies
-		WHERE workspace_id = $1
-			AND deleted_at IS NULL
+		WHERE "workspaceId" = $1
+			AND "deletedAt" IS NULL
 		GROUP BY industry
 		ORDER BY count DESC`,
 		[workspaceId]
@@ -308,31 +320,31 @@ export async function getKpiSummary(workspaceId: string) {
 		AppDataSource.query(
 			`SELECT COALESCE(SUM(deal_value), 0)::bigint AS total
 			FROM deals
-			WHERE workspace_id = $1 AND status = 'OPEN' AND deleted_at IS NULL`,
+			WHERE "workspaceId" = $1 AND status = 'OPEN' AND "deletedAt" IS NULL`,
 			[workspaceId]
 		),
 		AppDataSource.query(
 			`SELECT COUNT(*)::int AS count
 			FROM contacts
-			WHERE workspace_id = $1 AND status = 'active' AND deleted_at IS NULL`,
+			WHERE "workspaceId" = $1 AND status = 'active' AND "deletedAt" IS NULL`,
 			[workspaceId]
 		),
 		AppDataSource.query(
 			`SELECT COUNT(*)::int AS count, COALESCE(SUM(deal_value), 0)::bigint AS value
 			FROM deals
-			WHERE workspace_id = $1
+			WHERE "workspaceId" = $1
 				AND status = 'WON'
-				AND deleted_at IS NULL
-				AND updated_at >= DATE_TRUNC('month', NOW())`,
+				AND "deletedAt" IS NULL
+				AND "updatedAt" >= DATE_TRUNC('month', NOW())`,
 			[workspaceId]
 		),
 		AppDataSource.query(
 			`SELECT COUNT(*)::int AS count
 			FROM activities
-			WHERE workspace_id = $1
+			WHERE "workspaceId" = $1
 				AND status = 'DONE'
-				AND deleted_at IS NULL
-				AND updated_at >= DATE_TRUNC('week', NOW())`,
+				AND "deletedAt" IS NULL
+				AND "updatedAt" >= DATE_TRUNC('week', NOW())`,
 			[workspaceId]
 		),
 	]);
