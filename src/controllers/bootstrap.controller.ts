@@ -19,8 +19,13 @@ export async function updateBootstrapHandler(req: Request, res: Response, next: 
 		const ctx = req.ctx;
 		if (!ctx) throw new AppError("Request context missing", 500);
 
-		const { theme, widgets } = req.body;
-		const updated = await updateBootstrapData(ctx.workspaceId, ctx.userId, { theme, widgets });
+		const { theme, widgets, themeSettings, dashboardItems } = req.body;
+		const updated = await updateBootstrapData(ctx.workspaceId, ctx.userId, {
+			theme,
+			widgets,
+			themeSettings,
+			dashboardItems,
+		});
 		res.json(updated);
 	} catch (err) {
 		next(err);
